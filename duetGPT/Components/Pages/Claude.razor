@@ -41,8 +41,13 @@
         </DxGridLayoutItem>
         <DxGridLayoutItem Row="1" Column="1">
             <Template>
-                <div class="gridlayout-content gridlayout-item">
-                    Content
+                <div class="gridlayout-content gridlayout-item" style="display: flex; flex-direction: column; justify-content: flex-end; height: 100%;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <DxTextBox @bind-Text="@textInput" style="flex-grow: 1; margin-right: 10px;" />
+                        <DxButton RenderStyle="ButtonRenderStyle.Primary" RenderStyleMode="ButtonRenderStyleMode.Contained" 
+                                       Text="Go" IconCssClass="oi oi-align-center" >
+                        </DxButton>
+                    </div>
                 </div>
             </Template>
         </DxGridLayoutItem>
