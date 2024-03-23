@@ -18,6 +18,7 @@ builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<Anthropic>(provider =>
 {
     var configuration = provider.GetRequiredService<IConfiguration>();
+    
     var apiKey = configuration["Anthropic:ApiKey"];
     if (apiKey != null)
     {
