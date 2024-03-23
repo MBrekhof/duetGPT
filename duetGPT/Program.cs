@@ -17,10 +17,16 @@ builder.Services.AddSingleton<WeatherForecastService>();
 // Add Anthropic Client
 builder.Services.AddSingleton<Anthropic>(provider =>
 {
+    var configuration = provider.GetRequiredService<IConfiguration>();
+    var apiKey = configuration["Anthropic:ApiKey"];
+    if (apiKey != null)
+    {
+        throw new InvalidOperationException("API key for Anthropic is not configured.");
+    }
+
     var anthropic = new Anthropic
     {
-        ApiKey = "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"
-    };
+        ApiKey = apiKey    };
     return anthropic;
 });
 var app = builder.Build();
