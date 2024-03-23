@@ -87,27 +87,27 @@
         ModelValue = _models.FirstOrDefault();
     }
 }
-<script>
-    var rangeInput = document.querySelector(".range_slider");
-    var rangeBubble = document.querySelector(".range_bubble");
-
-    rangeInput.addEventListener("input", () => {
-        setBubble(rangeInput, rangeBubble);
-    });
-    rangeInput.addEventListener("mouseover", () => {
-        setBubble(rangeInput, rangeBubble);
-    });
-    rangeInput.addEventListener("mouseleave", () => {
-        rangeBubble.style.display = "none";
-    });
-
-    function setBubble(range, bubble) {
-        var val = range.value;
-        var min = range.min ? range.min : 0;
-        var max = range.max ? range.max : 100;
-        var newVal = Number(((val - min) * 100) / (max - min));
-        bubble.innerHTML = val;
-        bubble.style.left = `calc(${newVal}% + (${-5 - newVal * 0.15}px))`;
-        rangeBubble.style.display = "inline-block";
-    }
-</script>
+@* <script> *@
+@*     var rangeInput = document.querySelector(".range_slider"); *@
+@*     var rangeBubble = document.querySelector(".range_bubble"); *@
+@* *@
+@*     rangeInput.addEventListener("input", () => { *@
+@*         setBubble(rangeInput, rangeBubble); *@
+@*     }); *@
+@*     rangeInput.addEventListener("mouseover", () => { *@
+@*         setBubble(rangeInput, rangeBubble); *@
+@*     }); *@
+@*     rangeInput.addEventListener("mouseleave", () => { *@
+@*         rangeBubble.style.display = "none"; *@
+@*     }); *@
+@* *@
+@*     function setBubble(range, bubble) { *@
+@*         var val = range.value; *@
+@*         var min = range.min ? range.min : 0; *@
+@*         var max = range.max ? range.max : 100; *@
+@*         var newVal = Number(((val - min) * 100) / (max - min)); *@
+@*         bubble.innerHTML = val; *@
+@*         bubble.style.left = `calc(${newVal}% + (${-5 - newVal * 0.15}px))`; *@
+@*         rangeBubble.style.display = "inline-block"; *@
+@*     } *@
+@* </script> *@
