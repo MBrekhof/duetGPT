@@ -20,7 +20,7 @@ builder.Services.AddSingleton<Anthropic>(provider =>
     var configuration = provider.GetRequiredService<IConfiguration>();
     
     var apiKey = configuration["Anthropic:ApiKey"];
-    if (apiKey != null)
+    if (apiKey == null)
     {
         throw new InvalidOperationException("API key for Anthropic is not configured.");
     }
