@@ -13,7 +13,21 @@ public partial class Claude
     List<Message> chatMessages = new();
 
     bool running = false;
+    public enum Model
+    {
+        Haiku,
+        Opus,
+        Sonnet,
+    }
 
+    private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();
+
+    private Model ModelValue { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ModelValue = _models.FirstOrDefault();
+    }
     async Task SendClick()
     {
         string modelChosen = "Claude3Haiku";
