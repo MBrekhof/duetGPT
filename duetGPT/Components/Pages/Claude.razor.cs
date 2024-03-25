@@ -1,6 +1,7 @@
 ﻿using Claudia;
 using Markdig;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace duetGPT.Components.Pages
 {
@@ -14,6 +15,9 @@ namespace duetGPT.Components.Pages
         private List<String> formattedMessages = new();
         [Inject]
         private Anthropic Anthropic { get; set; }
+        [Inject]
+        private IJSRuntime JSRuntime { get; set; }
+        
         bool running = false;
 
         public enum Model
@@ -32,9 +36,17 @@ namespace duetGPT.Components.Pages
             ModelValue = _models.FirstOrDefault();
         }
 
+        private ElementReference textareaRef;
 
+        private void AdjustTextareaHeight()
+        {
+            _ = AdjustTextareaHeightAsync();
+        }
 
-
+        private async Task AdjustTextareaHeightAsync()
+        {
+            await JSRuntime.InvokeVoidAsync("adjustTextareaHeight", textareaRef);
+        }
 
         async Task SendClick()
         {

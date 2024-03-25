@@ -9,4 +9,15 @@
     <PackageReference Include="DevExpress.Blazor" Version="23.2.5" />
     <PackageReference Include="Markdig" Version="0.36.2" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Components\Pages\Weather.razor" />
+    <Content Remove="Components\Pages\Index.razor" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Data\WeatherForecast.cs" />
+    <Compile Remove="Data\WeatherForecastService.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Data\" />
+  </ItemGroup>
 </Project>

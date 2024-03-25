@@ -1,4 +1,5 @@
-﻿@page "/claude"
+﻿@page "/"
+@page "/claude"
 @using Claudia
 @rendermode InteractiveServer
 
@@ -24,8 +25,9 @@
     .input-box {
         width: 800px;
         min-height: 60px;
-        resize: vertical;
+        resize: none;
         margin-right: 10px;
+        overflow-y: auto;
     }
 
     
@@ -46,17 +48,25 @@
     }
 </style>
 
+<script>
+        function adjustTextareaHeight(textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = (textarea.scrollHeight) + "px";
+    }
+</script>
+
 <div class="title">Chat Application</div>
 
 <div class="messages-container">
-    @foreach (var message in formattedMessages)
+    @foreach (var message in formattedMessages) @*.AsEnumerable().Reverse()) *@
     {
         <div class="message">@((MarkupString)message)</div>
     }
 </div>
 
+
 <div class="input-container">
-    <textarea class="input-box" @bind="textInput" rows="3"></textarea>
+    <textarea class="input-box" @ref="textareaRef" @bind="textInput" @oninput="AdjustTextareaHeight" rows="3"></textarea>
     <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
     <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>
 </div>

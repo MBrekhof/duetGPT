@@ -1,4 +1,4 @@
-using duetGPT.Data;
+
 using duetGPT.Components;
 using Claudia;
 
@@ -13,7 +13,7 @@ builder.Services.AddDevExpressBlazor(options => {
     options.BootstrapVersion = DevExpress.Blazor.BootstrapVersion.v5;
     options.SizeMode = DevExpress.Blazor.SizeMode.Medium;
 });
-builder.Services.AddSingleton<WeatherForecastService>();
+
 // Add Anthropic Client
 builder.Services.AddSingleton<Anthropic>(provider =>
 {

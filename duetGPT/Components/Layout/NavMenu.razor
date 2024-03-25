@@ -12,7 +12,7 @@
         <Items>
             <DxGridLayoutItem Area="header" CssClass="sidebar-header">
                 <Template>
-                    <img class="logo" src="images/logo.svg" alt="DevExpress logo" />
+                    <span class="logo" style="color: white; font-size: larger; font-weight: bold;">BCH bv</span>
                 </Template>
             </DxGridLayoutItem>
             <DxGridLayoutItem Area="menu-button" CssClass="sidebar-header menu-button-container">
@@ -25,9 +25,7 @@
                     <div onclick="document.getElementById('sidebar').classList.remove('expanded')">
                         <DxMenu Orientation="@Orientation.Vertical" CssClass="menu">
                             <Items>
-                                <DxMenuItem NavigateUrl="/" Text="Home" CssClass="menu-item" IconCssClass="icon home-icon"></DxMenuItem>
-                                <DxMenuItem NavigateUrl="/weather" Text="Weather" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
-                                <DxMenuItem NavigateUrl="/claude" Text="Claude" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
+                               <DxMenuItem NavigateUrl="/claude" Text="Claude" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
                             </Items>
                         </DxMenu>
                     </div>
