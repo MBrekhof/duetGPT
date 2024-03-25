@@ -1,35 +1,73 @@
 ﻿@page "/weather"
-
-@using duetGPT.Data
-@attribute [StreamRendering(true)]
 @rendermode InteractiveServer
-@inject WeatherForecastService ForecastService
+<style>
+    .title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
 
-<PageTitle>Weather</PageTitle>
-<h1>Weather</h1>
+    .input-container {
+        position: fixed;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
-@if (forecasts == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <DxGrid Data="@forecasts"
-                CssClass="mw-1100">
-        <Columns>
-            <DxGridDataColumn Caption="Date" FieldName="Date" />
-            <DxGridDataColumn Caption="Temperature (C)" FieldName="TemperatureC" />
-            <DxGridDataColumn Caption="Temperature (F)" FieldName="TemperatureF" />
-            <DxGridDataColumn Caption="Summary" FieldName="Summary" />
-        </Columns>
-    </DxGrid>
-}
+    .input-box {
+        width: 800px;
+        min-height: 60px;
+        resize: vertical;
+        margin-right: 10px;
+    }
+
+    
+    .messages-container {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .message {
+        background-color: #f0f0f0;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+</style>
+
+<div class="title">Chat Application</div>
+
+<div class="messages-container">
+    @foreach (var message in messages)
+    {
+        <div class="message">@message</div>
+    }
+</div>
+
+<div class="input-container">
+    <textarea class="input-box" @bind="newMessage" rows="3"></textarea>
+    <button class="btn btn-primary" @onclick="SendMessage">&#x2192;</button>
+</div>
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private List<string> messages = new List<string>();
+    private string newMessage = string.Empty;
 
-    protected override async Task OnInitializedAsync()
+    private void SendMessage()
     {
-        forecasts = await ForecastService.GetForecastAsync(DateOnly.FromDateTime(DateTime.Now));
+        if (!string.IsNullOrWhiteSpace(newMessage))
+        {
+            messages.Insert(0, newMessage);
+            newMessage = string.Empty;
+        }
     }
 }
