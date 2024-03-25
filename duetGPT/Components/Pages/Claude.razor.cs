@@ -1,4 +1,5 @@
 ﻿using Claudia;
+using Markdig;
 using Microsoft.AspNetCore.Components;
 
 namespace duetGPT.Components.Pages
@@ -7,8 +8,10 @@ namespace duetGPT.Components.Pages
     {
         double temperature = 1.0;
         string textInput = "";
+        private string htmlContent = "";
         string systemInput = SystemPrompts.Claude3;
         List<Message> chatMessages = new();
+        private List<String> formattedMessages = new();
         [Inject]
         private Anthropic Anthropic { get; set; }
         bool running = false;
@@ -56,23 +59,37 @@ namespace duetGPT.Components.Pages
                 
                 chatMessages.Add(currentMessage);
 
-                textInput = ""; // clear input.
+
                 StateHasChanged();
 
                 await foreach (var messageStreamEvent in stream)
                 {
                     if (messageStreamEvent is ContentBlockDelta content)
                     {
+
                         currentMessage.Content[0].Text += content.Delta.Text;
+
                         StateHasChanged();
                     }
                 }
             }
             finally
             {
-                var response = currentMessage.Content[0].Text;
+                var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+                var markdown = currentMessage.Content[0].Text;
+                if (markdown != null)
+                    formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
+                formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
+                textInput = ""; // clear input.
                 running = false;
             }
+        }
+
+        private Task ClearThread()
+        {
+            chatMessages.Clear();
+            formattedMessages.Clear();
+            return Task.CompletedTask;
         }
     }
 }

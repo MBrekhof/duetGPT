@@ -2,76 +2,62 @@
 @using Claudia
 @rendermode InteractiveServer
 
-<DxGridLayout style="height:90%" CssClass="w-100 ch-480">
-    <Rows>
-        <DxGridLayoutRow Height="100px" />
-        <DxGridLayoutRow />
-        <DxGridLayoutRow Height="auto" />
-    </Rows>
-    <Columns>
-        <DxGridLayoutColumn Width="2fr" />
-        <DxGridLayoutColumn Width="70%" />
-        <DxGridLayoutColumn />
-    </Columns>
-    <Items>
-        <DxGridLayoutItem Row="0" Column="0" >
-            <Template>
-                <div class="gridlayout-header gridlayout-item">
-                    
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="0" Column="1">
-            <Template>
-                <div class="gridlayout-header gridlayout-item bold-large-text">
-                    duetGPT
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="0" Column="2">
-            <Template>
-                <div class="gridlayout-header gridlayout-item">
-                    <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
-                        <Buttons>
-                            <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
-                        </Buttons>
-                    </DxComboBox>
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="1" Column="1">
-            <Template>
-                <div class="gridlayout-content gridlayout-item" style="display: flex; flex-direction: column; justify-content: flex-end; height: 100%;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <DxTextBox @bind-Text="@textInput" style="flex-grow: 1; margin-right: 10px;" />
-                        <DxButton RenderStyle="ButtonRenderStyle.Primary" RenderStyleMode="ButtonRenderStyleMode.Contained" 
-                                       Text="Go" IconCssClass="oi oi-align-center" Click="SendClick" >
-                        </DxButton>
-                    </div>
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="1" Column="0">
-            <Template>
-                <div class="gridlayout-left-side-bar gridlayout-item">
-                    Left Bar
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="1" Column="2">
-            <Template>
-                <div class="gridlayout-right-side-bar gridlayout-item">
-                    Right Bar
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-        <DxGridLayoutItem Row="2" Column="0" ColumnSpan="3">
-            <Template>
-                <div class="gridlayout-footer gridlayout-item">
-                    Footer
-                </div>
-            </Template>
-        </DxGridLayoutItem>
-    </Items>
-</DxGridLayout>
+<style>
+    .title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+
+    .input-container {
+        position: fixed;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .input-box {
+        width: 800px;
+        min-height: 60px;
+        resize: vertical;
+        margin-right: 10px;
+    }
+
+    
+    .messages-container {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .message {
+        background-color: #f0f0f0;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+</style>
+
+<div class="title">Chat Application</div>
+
+<div class="messages-container">
+    @foreach (var message in formattedMessages)
+    {
+        <div class="message">@((MarkupString)message)</div>
+    }
+</div>
+
+<div class="input-container">
+    <textarea class="input-box" @bind="textInput" rows="3"></textarea>
+    <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
+    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>
+</div>
 
