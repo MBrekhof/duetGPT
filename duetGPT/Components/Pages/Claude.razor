@@ -3,12 +3,18 @@
 @rendermode InteractiveServer
 
 <style>
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 20px 10px; /* Adjust margins as needed */
+    }
     .title {
         text-align: center;
         font-size: 24px;
         font-weight: bold;
-        margin-top: 20px;
-        margin-bottom: 20px;
+        /*margin-top: 20px;*/
+        /*margin-bottom: 20px;*/
     }
 
     .input-container {
@@ -46,7 +52,15 @@
     }
 </style>
 
-<div class="title">Chat Application</div>
+<div class="header-container">
+    <div class="title">Chat Application</div>
+
+    <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
+        <Buttons>
+            <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+        </Buttons>
+    </DxComboBox>
+</div>
 
 <div class="messages-container">
     @foreach (var message in formattedMessages)
@@ -58,6 +72,6 @@
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
     <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
-    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>
+    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>  
 </div>
 

@@ -1,5 +1,6 @@
 ﻿using Claudia;
 using Markdig;
+using Markdig.SyntaxHighlighting;
 using Microsoft.AspNetCore.Components;
 
 namespace duetGPT.Components.Pages
@@ -9,7 +10,7 @@ namespace duetGPT.Components.Pages
         double temperature = 1.0;
         string textInput = "";
         private string htmlContent = "";
-        string systemInput = SystemPrompts.Claude3;
+        string systemInput = SystemPrompts.Claude3; // <--TODO: to replace with variable prompt
         List<Message> chatMessages = new();
         private List<String> formattedMessages = new();
         [Inject]
@@ -31,11 +32,7 @@ namespace duetGPT.Components.Pages
         {
             ModelValue = _models.FirstOrDefault();
         }
-
-
-
-
-
+        
         async Task SendClick()
         {
             string modelChosen = "Claude3Haiku";
@@ -43,11 +40,16 @@ namespace duetGPT.Components.Pages
             if (string.IsNullOrWhiteSpace(textInput)) return;
             modelChosen = "Claude3" + ModelValue.ToString();
             running = true;
-            var currentMessage = new Message { Role = Roles.Assistant, Content = "" };
+            
+            var userMessage = new Message { Role = Roles.User, Content = textInput };
+            var assistantMessage = new Message { Role = Roles.Assistant, Content = "oki doki" };
+            
             try
             {
-                chatMessages.Add(new() { Role = Roles.User, Content = textInput });
 
+                chatMessages.Add(userMessage);
+                chatMessages.Add(assistantMessage);
+                
                 var stream = Anthropic.Messages.CreateStreamAsync(new()
                 {
                     Model = Claudia.Models.Claude3Haiku,
@@ -57,7 +59,7 @@ namespace duetGPT.Components.Pages
                     Messages = chatMessages.ToArray()
                 });
                 
-                chatMessages.Add(currentMessage);
+
 
 
                 StateHasChanged();
@@ -67,7 +69,7 @@ namespace duetGPT.Components.Pages
                     if (messageStreamEvent is ContentBlockDelta content)
                     {
 
-                        currentMessage.Content[0].Text += content.Delta.Text;
+                        assistantMessage.Content[0].Text += content.Delta.Text;
 
                         StateHasChanged();
                     }
@@ -75,11 +77,13 @@ namespace duetGPT.Components.Pages
             }
             finally
             {
-                var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
-                var markdown = currentMessage.Content[0].Text;
+                var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
+                var markdown = assistantMessage.Content[0].Text;
                 if (markdown != null)
                     formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
-                formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
+                var text = userMessage.Content[0].Text;
+                if (text != null)
+                    formattedMessages.Add(Markdown.ToHtml(text, pipeline));
                 textInput = ""; // clear input.
                 running = false;
             }

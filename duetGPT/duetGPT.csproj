@@ -8,5 +8,6 @@
     <PackageReference Include="Claudia" Version="1.0.1" />
     <PackageReference Include="DevExpress.Blazor" Version="23.2.5" />
     <PackageReference Include="Markdig" Version="0.36.2" />
+    <PackageReference Include="Markdig.SyntaxHighlighting" Version="1.1.7" />
   </ItemGroup>
 </Project>
