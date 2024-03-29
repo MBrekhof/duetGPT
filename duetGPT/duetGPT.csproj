@@ -10,4 +10,15 @@
     <PackageReference Include="Markdig" Version="0.36.2" />
     <PackageReference Include="Markdig.SyntaxHighlighting" Version="1.1.7" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Remove="Components\Pages\Weather.razor" />
+    <Content Remove="Components\Pages\Index.razor" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Data\WeatherForecast.cs" />
+    <Compile Remove="Data\WeatherForecastService.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Data\" />
+  </ItemGroup>
 </Project>
