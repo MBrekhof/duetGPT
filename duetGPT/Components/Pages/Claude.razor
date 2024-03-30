@@ -50,6 +50,15 @@
         margin-bottom: 10px;
         border-radius: 5px;
     }
+    .bg-blue {
+        background-color: #add8e6; /* Light blue */
+        color: #000000; /* Black text color */
+    }
+
+    .bg-green {
+        background-color: #90ee90; /* Light green */
+        color: #000000; /* Black text color */
+    }
 </style>
 
 <div class="header-container">
@@ -67,12 +76,18 @@
                 IndicatorAreaVisible="false"
                 Text="thinking..."
 >
-<div class="messages-container" >
-    @for (int index = 0; index < formattedMessages.Count; index++)
-    {
-    <div class="message">@(((MarkupString)formattedMessages[index]))</div>
-    }
-</div>
+    <div class="messages-container">
+        @{
+        int index = 0;
+        foreach (var message in formattedMessages)
+        {
+        <div class="message @(index % 2 == 0 ? "bg-blue" : "bg-green")">
+            @(((MarkupString)message))
+        </div>
+        index++;
+        }
+        }
+    </div>
 </DxLoadingPanel>
 
 <div class="input-container">

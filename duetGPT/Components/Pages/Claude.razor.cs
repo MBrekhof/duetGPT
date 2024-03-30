@@ -9,7 +9,7 @@ namespace duetGPT.Components.Pages
     {
         double temperature = 1.0;
         string textInput = "";
-        private string htmlContent = "";
+
         string systemInput = SystemPrompts.Claude3; // <--TODO: to replace with variable prompt
         List<Message> chatMessages = new();
         private List<String> formattedMessages = new();
@@ -42,27 +42,19 @@ namespace duetGPT.Components.Pages
             running = true;
             
             var userMessage = new Message { Role = Roles.User, Content = textInput };
-
+            var assistantMessage = new Message { Role = Roles.Assistant, Content = "Evaluate your think, let the user know if you do not have enough information to answer." };
             
             try
             {
 
                 chatMessages.Add(userMessage);
-                //chatMessages.Add(assistantMessage);
+                chatMessages.Add(assistantMessage);
                 
-                //
-                // {
-                //     Model = Claudia.Models.Claude3Haiku,
-                //     MaxTokens = 1024,
-                //     Temperature = temperature,
-                //     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
-                //     
-                //     Messages = chatMessages.ToArray()
-                // });
-                var assistantMessage = await Anthropic.Messages.CreateAsync(new()
+
+                 var responseMessage = await Anthropic.Messages.CreateAsync(new()
                 {
                     Model = Claudia.Models.Claude3Haiku,
-                    MaxTokens = 1024,
+                    MaxTokens = 2048,
                     Temperature = temperature,
                     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
                     
@@ -75,10 +67,19 @@ namespace duetGPT.Components.Pages
                 if (text != null)
                     formattedMessages.Add(Markdown.ToHtml(text, pipeline));
                 
-                var markdown = assistantMessage.Content[0].Text;
-                if (markdown != null)
-                    formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
-
+                string markdown = null;
+                if (responseMessage.Content != null && responseMessage.Content.Any())
+                {
+                    markdown = responseMessage.Content[0].Text;
+                    if (markdown != null)
+                    {
+                        formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
+                    }
+                }
+                else
+                {
+                    formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
+                }
                 textInput = ""; // clear input.
 
                 // await foreach (var messageStreamEvent in stream)
