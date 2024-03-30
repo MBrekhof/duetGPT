@@ -61,17 +61,26 @@
         </Buttons>
     </DxComboBox>
 </div>
-
+<DxLoadingPanel @bind-Visible="@running"
+                IsContentBlocked="true"
+                ApplyBackgroundShading="true"
+                IndicatorAreaVisible="false"
+                Text="thinking..."
+>
 <div class="messages-container" >
     @for (int index = 0; index < formattedMessages.Count; index++)
     {
     <div class="message">@(((MarkupString)formattedMessages[index]))</div>
     }
 </div>
+</DxLoadingPanel>
 
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
     <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
     <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>  
 </div>
+
+
+
 

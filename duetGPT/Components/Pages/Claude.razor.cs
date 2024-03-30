@@ -42,15 +42,24 @@ namespace duetGPT.Components.Pages
             running = true;
             
             var userMessage = new Message { Role = Roles.User, Content = textInput };
-            var assistantMessage = new Message { Role = Roles.Assistant, Content = "" };
+
             
             try
             {
 
                 chatMessages.Add(userMessage);
-                chatMessages.Add(assistantMessage);
+                //chatMessages.Add(assistantMessage);
                 
-                var stream = Anthropic.Messages.CreateStreamAsync(new()
+                //
+                // {
+                //     Model = Claudia.Models.Claude3Haiku,
+                //     MaxTokens = 1024,
+                //     Temperature = temperature,
+                //     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
+                //     
+                //     Messages = chatMessages.ToArray()
+                // });
+                var assistantMessage = await Anthropic.Messages.CreateAsync(new()
                 {
                     Model = Claudia.Models.Claude3Haiku,
                     MaxTokens = 1024,
@@ -60,24 +69,7 @@ namespace duetGPT.Components.Pages
                     Messages = chatMessages.ToArray()
                 });
                 
-
-
-
                 StateHasChanged();
-
-                await foreach (var messageStreamEvent in stream)
-                {
-                    if (messageStreamEvent is ContentBlockDelta content)
-                    {
-
-                        assistantMessage.Content[0].Text += content.Delta.Text;
-
-                        StateHasChanged();
-                    }
-                }
-            }
-            finally
-            {
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
                 var text = userMessage.Content[0].Text;
                 if (text != null)
@@ -88,6 +80,20 @@ namespace duetGPT.Components.Pages
                     formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
 
                 textInput = ""; // clear input.
+
+                // await foreach (var messageStreamEvent in stream)
+                // {
+                //     if (messageStreamEvent is ContentBlockDelta content)
+                //     {
+                //
+                //         assistantMessage.Content[0].Text += content.Delta.Text;
+                //
+                //         StateHasChanged();
+                //     }
+                // }
+            }
+            finally
+            {
                 running = false;
             }
         }
