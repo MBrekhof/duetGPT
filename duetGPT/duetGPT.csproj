@@ -12,7 +12,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Remove="Components\Pages\Weather.razor" />
-    <Content Remove="Components\Pages\Index.razor" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Data\WeatherForecast.cs" />

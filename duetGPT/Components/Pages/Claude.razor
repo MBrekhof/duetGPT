@@ -39,7 +39,7 @@
         max-height: calc(100vh - 200px);
         overflow-y: auto;
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
         align-items: center;
         padding: 20px;
     }
@@ -62,10 +62,10 @@
     </DxComboBox>
 </div>
 
-<div class="messages-container">
-    @foreach (var message in formattedMessages)
+<div class="messages-container" >
+    @for (int index = 0; index < formattedMessages.Count; index++)
     {
-        <div class="message">@((MarkupString)message)</div>
+    <div class="message">@(((MarkupString)formattedMessages[index]))</div>
     }
 </div>
 

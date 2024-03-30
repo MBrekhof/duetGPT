@@ -42,7 +42,7 @@ namespace duetGPT.Components.Pages
             running = true;
             
             var userMessage = new Message { Role = Roles.User, Content = textInput };
-            var assistantMessage = new Message { Role = Roles.Assistant, Content = "oki doki" };
+            var assistantMessage = new Message { Role = Roles.Assistant, Content = "" };
             
             try
             {
@@ -56,6 +56,7 @@ namespace duetGPT.Components.Pages
                     MaxTokens = 1024,
                     Temperature = temperature,
                     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
+                    
                     Messages = chatMessages.ToArray()
                 });
                 
@@ -78,12 +79,14 @@ namespace duetGPT.Components.Pages
             finally
             {
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
-                var markdown = assistantMessage.Content[0].Text;
-                if (markdown != null)
-                    formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
                 var text = userMessage.Content[0].Text;
                 if (text != null)
                     formattedMessages.Add(Markdown.ToHtml(text, pipeline));
+                
+                var markdown = assistantMessage.Content[0].Text;
+                if (markdown != null)
+                    formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
+
                 textInput = ""; // clear input.
                 running = false;
             }
