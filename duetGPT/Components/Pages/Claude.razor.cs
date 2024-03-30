@@ -15,7 +15,7 @@ namespace duetGPT.Components.Pages
         private List<String> formattedMessages = new();
         [Inject]
         private Anthropic Anthropic { get; set; }
-        bool running = false;
+        bool running;
 
         public enum Model
         {
@@ -35,12 +35,10 @@ namespace duetGPT.Components.Pages
         
         async Task SendClick()
         {
-            string modelChosen = "Claude3Haiku";
-            if (running) return;
-            if (string.IsNullOrWhiteSpace(textInput)) return;
-            modelChosen = "Claude3" + ModelValue.ToString();
+
+            string modelChosen = GetModelChosen(ModelValue);
             running = true;
-            
+
             var userMessage = new Message { Role = Roles.User, Content = textInput };
             var assistantMessage = new Message { Role = Roles.Assistant, Content = "Evaluate your think, let the user know if you do not have enough information to answer." };
             
@@ -48,57 +46,78 @@ namespace duetGPT.Components.Pages
             {
 
                 chatMessages.Add(userMessage);
-                chatMessages.Add(assistantMessage);
-                
 
-                 var responseMessage = await Anthropic.Messages.CreateAsync(new()
+                //  var responseMessage = await Anthropic.Messages.CreateAsync(new()
+                // {
+                //     Model = Claudia.Models.Claude3Haiku,
+                //     MaxTokens = 2048,
+                //     Temperature = temperature,
+                //     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
+                //     
+                //     Messages = chatMessages.ToArray()
+                // });
+                var stream = Anthropic.Messages.CreateStreamAsync(new()
                 {
-                    Model = Claudia.Models.Claude3Haiku,
+                    Model = modelChosen,
                     MaxTokens = 2048,
                     Temperature = temperature,
                     System = string.IsNullOrWhiteSpace(systemInput) ? null : systemInput,
-                    
                     Messages = chatMessages.ToArray()
                 });
                 
+                chatMessages.Add(assistantMessage);
                 StateHasChanged();
+                
+                string markdown = null;
+                
+                await foreach (var messageStreamEvent in stream)
+                {
+                    if (messageStreamEvent is ContentBlockDelta content)
+                    {
+                       markdown += content.Delta.Text;
+                       StateHasChanged();
+                    }
+                }
+
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
                 var text = userMessage.Content[0].Text;
                 if (text != null)
                     formattedMessages.Add(Markdown.ToHtml(text, pipeline));
                 
-                string markdown = null;
-                if (responseMessage.Content != null && responseMessage.Content.Any())
-                {
-                    markdown = responseMessage.Content[0].Text;
+                
+                // if (responseMessage.Content != null && responseMessage.Content.Any())
+                // {
+                //     markdown = responseMessage.Content[0].Text;
                     if (markdown != null)
                     {
                         formattedMessages.Add(Markdown.ToHtml(markdown, pipeline));
                     }
-                }
+                // }
                 else
                 {
                     formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
                 }
                 textInput = ""; // clear input.
-
-                // await foreach (var messageStreamEvent in stream)
-                // {
-                //     if (messageStreamEvent is ContentBlockDelta content)
-                //     {
-                //
-                //         assistantMessage.Content[0].Text += content.Delta.Text;
-                //
-                //         StateHasChanged();
-                //     }
-                // }
             }
             finally
             {
                 running = false;
             }
         }
-
+        private string GetModelChosen(Model modelValue)
+        {
+            switch (modelValue)
+            {
+                case Model.Haiku:
+                    return Claudia.Models.Claude3Haiku;
+                case Model.Sonnet:
+                    return Claudia.Models.Claude3Sonnet;
+                case Model.Opus:
+                    return Claudia.Models.Claude3Opus;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(modelValue), $"Not expected model value: {modelValue}");
+            }
+        }
         private Task ClearThread()
         {
             chatMessages.Clear();

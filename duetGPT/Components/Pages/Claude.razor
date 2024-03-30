@@ -70,12 +70,11 @@
         </Buttons>
     </DxComboBox>
 </div>
-<DxLoadingPanel @bind-Visible="@running"
+<DxLoadingPanel @bind-Visible="@running" IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
                 IsContentBlocked="true"
                 ApplyBackgroundShading="true"
                 IndicatorAreaVisible="false"
-                Text="thinking..."
->
+                Text="thinking...">
     <div class="messages-container">
         @{
         int index = 0;
