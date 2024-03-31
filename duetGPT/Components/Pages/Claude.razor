@@ -44,11 +44,16 @@
         padding: 20px;
     }
 
-    .message {
+    message {
         background-color: #f0f0f0;
         padding: 10px;
         margin-bottom: 10px;
         border-radius: 5px;
+        text-align: left; /* This will align the message to the left by default */
+    }
+
+    .message:nth-child(odd) {
+        text-align: right; /* This will align the odd-indexed messages to the right */
     }
     .bg-blue {
         background-color: #add8e6; /* Light blue */
