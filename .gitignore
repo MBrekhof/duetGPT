@@ -4,3 +4,9 @@ duetGPT/appsettings.Development.json
 .idea
 duetGPT/appsettings.Development.json
 .DS_Store
+*.vsidx
+.vs/duetGPT/v17
+duetGPT/Properties
+*.user
+.vs/ProjectEvaluation
+.vs
