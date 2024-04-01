@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+https://go.microsoft.com/fwlink/?LinkID=208121.
+-->
+<Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\Project\duetGPT\duetGPT\bin\Release\net8.0\publish\</_PublishTargetUrl>
+    <History>True|2024-03-31T18:24:12.5025294Z;True|2024-03-31T20:16:36.7107735+02:00;True|2024-03-31T15:02:37.8008559+02:00;True|2024-03-31T14:53:01.5205456+02:00;True|2024-03-31T14:25:59.5566454+02:00;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+</Project>
