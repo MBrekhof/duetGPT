@@ -1,0 +1,166 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Project\\duetGPT\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\pages\\claude.razor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\pages\\claude.razor.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|c:\\project\\duetgpt\\duetgpt\\components\\pages\\claude.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\pages\\claude.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\pages\\counter.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\pages\\counter.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\routes.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\routes.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\layout\\navmenu.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\layout\\navmenu.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\app.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\app.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|C:\\Project\\duetGPT\\duetgpt\\components\\_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3691A201-35B4-454E-9DEA-61E0574F4E28}|duetGPT\\duetGPT.csproj|solutionrelative:duetgpt\\components\\_imports.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 6,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:2:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:3:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Counter.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Counter.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\Pages\\Counter.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Counter.razor",
+              "RelativeToolTip": "duetGPT\\Components\\Pages\\Counter.razor",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAYAAAAPAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-20T19:06:31.476Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "NavMenu.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\Layout\\NavMenu.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\Layout\\NavMenu.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\Layout\\NavMenu.razor",
+              "RelativeToolTip": "duetGPT\\Components\\Layout\\NavMenu.razor",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAB4AAABOAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-19T21:07:01.326Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Claude.razor.cs",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Claude.razor.cs",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\Pages\\Claude.razor.cs",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Claude.razor.cs",
+              "RelativeToolTip": "duetGPT\\Components\\Pages\\Claude.razor.cs",
+              "ViewState": "AQIAAAgAAAAAAAAAAAAIwBwAAAArAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-03-19T20:52:32.832Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "_Imports.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\_Imports.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\_Imports.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\_Imports.razor",
+              "RelativeToolTip": "duetGPT\\Components\\_Imports.razor",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-19T20:47:20.204Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "App.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\App.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\App.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\App.razor",
+              "RelativeToolTip": "duetGPT\\Components\\App.razor",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-19T20:47:14.087Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Routes.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\Routes.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\Routes.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\Routes.razor",
+              "RelativeToolTip": "duetGPT\\Components\\Routes.razor",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-19T20:47:09.038Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Claude.razor",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Claude.razor",
+              "RelativeDocumentMoniker": "duetGPT\\Components\\Pages\\Claude.razor",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Components\\Pages\\Claude.razor",
+              "RelativeToolTip": "duetGPT\\Components\\Pages\\Claude.razor",
+              "ViewState": "AQIAAAMAAAAAAAAAAAAAAAcAAAAKAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2024-03-19T20:46:48.295Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Project\\duetGPT\\duetGPT\\Program.cs",
+              "RelativeDocumentMoniker": "duetGPT\\Program.cs",
+              "ToolTip": "C:\\Project\\duetGPT\\duetGPT\\Program.cs",
+              "RelativeToolTip": "duetGPT\\Program.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABUAAAB+AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-03-19T20:42:29.743Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 
 using duetGPT.Components;
 using Claudia;
-using Microsoft.Extensions.FileProviders;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,17 +40,10 @@ if(!app.Environment.IsDevelopment()) {
 }
 app.UseHttpsRedirection();
 
-#if DEBUG
 app.UseStaticFiles();
-#else
-app.UseStaticFiles(new StaticFileOptions
-{
-    RequestPath = "/wwwroot"
-});
-#endif
 app.UseAntiforgery();
 
 app.MapRazorComponents<App>()
-   .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode();
 
 app.Run();
