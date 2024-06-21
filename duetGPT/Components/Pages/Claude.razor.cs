@@ -18,6 +18,8 @@ namespace duetGPT.Components.Pages
 
         public enum Model
         {
+
+            Sonnet35,
             Haiku,
             Sonnet,
             Opus
@@ -115,6 +117,8 @@ namespace duetGPT.Components.Pages
                     return Claudia.Models.Claude3Haiku;
                 case Model.Sonnet:
                     return Claudia.Models.Claude3Sonnet;
+                case Model.Sonnet35:
+                    return Claudia.Models.Claude3_5Sonnet;
                 case Model.Opus:
                     return Claudia.Models.Claude3Opus;
                 default:

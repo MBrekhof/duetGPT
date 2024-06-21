@@ -1,0 +1,32 @@
+﻿@page "/upload"
+
+@using Claudia
+@rendermode InteractiveServer
+
+@inject NavigationManager NavigationManager
+<div class="upload-container">
+    <div style="@(SelectedFilesCount > 0 ? "display: none" : string.Empty)">
+        <span class="drop-file-icon mb-3"></span>
+        <span class="mb-3">Click the Select Files button to select a file</span>
+    </div>
+    <DxUpload Name="myFile"
+              MaxFileSize="4000000"
+              AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" })"
+              UploadUrl="@GetUploadUrl("api/UploadValidation/Upload/")"
+              SelectedFilesChanged="@SelectedFilesChanged"
+              CssClass="@(SelectedFilesCount > 0 ? "w-100" : string.Empty)">
+    </DxUpload>
+</div>
+
+@code {
+    int SelectedFilesCount { get; set; }
+    protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
+    {
+        SelectedFilesCount = files.ToList().Count;
+        InvokeAsync(StateHasChanged);
+    }
+    protected string GetUploadUrl(string url)
+    {
+        return NavigationManager.ToAbsoluteUri(url).AbsoluteUri;
+    }
+}

@@ -29,16 +29,20 @@
                             </Items>
                         </DxMenu>
                     </div>
-                </Template>
-            </DxGridLayoutItem>
-            <DxGridLayoutItem Area="footer" CssClass="footer">
-                <Template>
-                  <NavLink href="https://docs.devexpress.com/Blazor/400725/blazor-components" class="button-link">
-                    <DxButton Text="Docs" RenderStyleMode="@ButtonRenderStyleMode.Text" CssClass="footer-button" RenderStyle="@ButtonRenderStyle.Light" IconCssClass="icon docs-icon"></DxButton>
-                  </NavLink>
-                  <NavLink href="https://demos.devexpress.com/blazor/" class="button-link">
-                    <DxButton Text="Demos" RenderStyleMode="@ButtonRenderStyleMode.Text" CssClass="footer-button" RenderStyle="@ButtonRenderStyle.Light" IconCssClass="icon demos-icon"></DxButton>
-                  </NavLink>
+                    <div onclick="document.getElementById('sidebar').classList.remove('expanded')">
+                        <DxMenu Orientation="@Orientation.Vertical" CssClass="menu">
+                            <Items>
+                                <DxMenuItem NavigateUrl="/openai" Text="OpenAI" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
+                            </Items>
+                        </DxMenu>
+                    </div>
+                    <div onclick="document.getElementById('sidebar').classList.remove('expanded')">
+                        <DxMenu Orientation="@Orientation.Vertical" CssClass="menu">
+                            <Items>
+                                <DxMenuItem NavigateUrl="/upload" Text="Upload" CssClass="menu-item" IconCssClass="icon grid-icon"></DxMenuItem>
+                            </Items>
+                        </DxMenu>
+                    </div>
                 </Template>
             </DxGridLayoutItem>
         </Items>
