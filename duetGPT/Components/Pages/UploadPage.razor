@@ -1,30 +1,68 @@
-﻿@page "/upload"
+@page "/upload"
 
 @using Claudia
 @rendermode InteractiveServer
 
 @inject NavigationManager NavigationManager
+
+<h3>File Upload</h3>
+
 <div class="upload-container">
-    <div style="@(SelectedFilesCount > 0 ? "display: none" : string.Empty)">
+    <div class="upload-instructions @(SelectedFilesCount > 0 ? "d-none" : "")">
         <span class="drop-file-icon mb-3"></span>
-        <span class="mb-3">Click the Select Files button to select a file</span>
+        <span class="mb-3">Click the Select Files button to choose a file</span>
     </div>
     <DxUpload Name="myFile"
               MaxFileSize="4000000"
-              AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" })"
+              AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" ,".rtf",".sql"})"
               UploadUrl="@GetUploadUrl("api/UploadValidation/Upload/")"
               SelectedFilesChanged="@SelectedFilesChanged"
-              CssClass="@(SelectedFilesCount > 0 ? "w-100" : string.Empty)">
+              CssClass="@(SelectedFilesCount > 0 ? "w-100" : "")">
     </DxUpload>
 </div>
 
+@if (SelectedFilesCount > 0)
+{
+    <div class="mt-3">
+        <p>Selected files: @SelectedFilesCount</p>
+    </div>
+}
+
+<style>
+    .upload-container {
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 20px;
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .upload-instructions {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .drop-file-icon {
+        font-size: 48px;
+        color: #007bff;
+    }
+
+    .d-none {
+        display: none;
+    }
+</style>
+
 @code {
     int SelectedFilesCount { get; set; }
+    
     protected void SelectedFilesChanged(IEnumerable<UploadFileInfo> files)
     {
         SelectedFilesCount = files.ToList().Count;
         InvokeAsync(StateHasChanged);
     }
+    
     protected string GetUploadUrl(string url)
     {
         return NavigationManager.ToAbsoluteUri(url).AbsoluteUri;
