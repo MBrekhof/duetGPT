@@ -11,9 +11,10 @@
     <div class="upload-instructions @(SelectedFilesCount > 0 ? "d-none" : "")">
         <span class="drop-file-icon mb-3"></span>
         <span class="mb-3">Click the Select Files button to choose a file</span>
+        <span class="mb-3">Maximum file size: 50 MB</span>
     </div>
     <DxUpload Name="myFile"
-              MaxFileSize="4000000"
+              MaxFileSize="52428800"
               AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" ,".rtf",".sql"})"
               UploadUrl="@GetUploadUrl("api/UploadValidation/Upload/")"
               SelectedFilesChanged="@SelectedFilesChanged"

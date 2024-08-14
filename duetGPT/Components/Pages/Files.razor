@@ -1,0 +1,42 @@
+@page "/files"
+@using duetGPT.Data
+@using duetGPT.Services
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+
+<h3>Files</h3>
+
+<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10">
+    <Columns>
+        <DxGridDataColumn FieldName="FileName" Caption="File Name" />
+        <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
+        <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
+        <DxGridDataColumn FieldName="ContentType" Caption="Content Type" />
+    </Columns>
+</DxGrid>
+
+@code {
+    private List<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var documents = await DbContext.Documents.ToListAsync();
+        Documents = documents.Select(d => new DocumentViewModel
+        {
+            Id = d.Id,
+            FileName = d.FileName,
+            FileSize = d.Content.Length,
+            UploadedAt = d.UploadedAt,
+            ContentType = d.ContentType
+        }).ToList();
+    }
+
+    private class DocumentViewModel
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; }
+        public long FileSize { get; set; }
+        public DateTime UploadedAt { get; set; }
+        public string ContentType { get; set; }
+    }
+}
