@@ -1,0 +1,10 @@
+﻿.external-logins {
+    display: flex;
+    gap: 0.5rem;
+}
+
+@media (max-width: 500px) {
+    .external-logins {
+        flex-direction: column;
+    }
+}

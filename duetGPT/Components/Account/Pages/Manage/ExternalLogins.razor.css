@@ -1,0 +1,10 @@
+﻿.current-logins {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.current-logins-item {
+    display: flex;
+    gap: 0.625rem;
+}

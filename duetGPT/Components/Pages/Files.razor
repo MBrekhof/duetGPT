@@ -1,8 +1,10 @@
 @page "/files"
+@using Microsoft.AspNetCore.Authorization
 @using duetGPT.Data
 @using duetGPT.Services
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
+@attribute [Authorize]
 
 <h3>Files</h3>
 

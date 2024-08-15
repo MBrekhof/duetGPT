@@ -1,9 +1,9 @@
 @page "/upload"
-
 @using Claudia
+@using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
-
 @inject NavigationManager NavigationManager
+@attribute [Authorize]
 
 <h3>File Upload</h3>
 

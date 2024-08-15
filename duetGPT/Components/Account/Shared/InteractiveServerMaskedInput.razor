@@ -1,0 +1,11 @@
+﻿@rendermode InteractiveServer
+
+<DxMaskedInput name="@Name" @rendermode="InteractiveServer" CssClass="@CssClass" @bind-Value="Value" Mask="@Mask" />
+
+@code {
+    [Parameter] public string Name { get; set; }
+    [Parameter] public string Mask { get; set; }
+    [Parameter] public string Value { get; set; }
+    [Parameter] public string CssClass { get; set; }
+    [Parameter] public bool Password { get; set; }
+}

@@ -1,7 +1,9 @@
 ﻿@page "/claude"
 @page "/"
 @using Claudia
+@using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
+@attribute [Authorize]
 
 <style>
     .header-container {
