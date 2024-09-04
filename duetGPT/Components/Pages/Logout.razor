@@ -1,0 +1,21 @@
+@page "/logout"
+@using Microsoft.AspNetCore.Identity
+@using duetGPT.Data
+@using duetGPT.Components.Account
+@using Microsoft.Extensions.Logging
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager  
+@inject ILogger<Logout> Logger
+@rendermode InteractiveServer
+
+<PageTitle>Logout</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <h2>Logout</h2>
+            <p>Are you sure you want to logout?</p>
+            <button class="btn btn-primary" @onclick="LogoutUser">Logout</button>
+        </div>
+    </div>
+</div>

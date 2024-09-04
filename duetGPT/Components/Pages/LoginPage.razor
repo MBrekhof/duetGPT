@@ -1,15 +1,18 @@
 @page "/login"
 @using Microsoft.AspNetCore.Identity
 @using System.ComponentModel.DataAnnotations
-@inject SignInManager<IdentityUser> SignInManager
-@inject UserManager<IdentityUser> UserManager
+@using duetGPT.Data
+@using Microsoft.AspNetCore.Components.Forms
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager NavigationManager
 
 <h3>Login</h3>
 
-<EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit">
+<EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit" FormName="login-form" method="post">
     <DataAnnotationsValidator />
     <ValidationSummary />
+    <AntiforgeryToken />
 
     <div class="form-group">
         <label for="email">Email:</label>

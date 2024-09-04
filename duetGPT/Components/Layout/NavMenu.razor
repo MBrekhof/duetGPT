@@ -1,8 +1,10 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
+@using duetGPT.Data
+@using DevExpress.Blazor
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
-@inject SignInManager<Microsoft.AspNetCore.Identity.IdentityUser> SignInManager
+@inject SignInManager<ApplicationUser> SignInManager
 
 <div id="sidebar">
     <DxGridLayout CssClass="page-layout" RowSpacing="1.5rem">
@@ -29,14 +31,14 @@
             <DxGridLayoutItem Area="navigation" CssClass="layout-item">
                 <Template>
                     <div onclick="document.getElementById('sidebar').classList.remove('expanded')">
-                        <DxMenu Orientation="@Orientation.Vertical" CssClass="menu">
+                        <DxMenu Orientation="Orientation.Vertical" CssClass="menu">
                             <Items>
                                <DxMenuItem NavigateUrl="/claude" Text="Claude" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
                                <DxMenuItem NavigateUrl="/files" Text="Files" CssClass="menu-item" IconCssClass="icon doc-icon"></DxMenuItem>
                                <DxMenuItem NavigateUrl="/upload" Text="Upload" CssClass="menu-item" IconCssClass="icon grid-icon"></DxMenuItem>
                                <AuthorizeView>
                                    <Authorized>
-                                       <DxMenuItem Text="Logout" CssClass="menu-item" IconCssClass="icon exit-icon" Click="@LogoutClick"></DxMenuItem>
+                                        <DxMenuItem NavigateUrl="/logout" Text="Logout" CssClass="menu-item" IconCssClass="icon exit-icon"></DxMenuItem>
                                    </Authorized>
                                    <NotAuthorized>
                                        <DxMenuItem NavigateUrl="/login" Text="Login" CssClass="menu-item" IconCssClass="icon enter-icon"></DxMenuItem>
@@ -52,9 +54,9 @@
 </div>
 
 @code {
-    private async Task LogoutClick()
-    {
-        await SignInManager.SignOutAsync();
-        NavigationManager.NavigateTo("/", true);
-    }
+    // private async Task LogoutClick()
+    // {
+    //     await SignInManager.SignOutAsync();
+    //     NavigationManager.NavigateTo("/", true);
+    // }
 }

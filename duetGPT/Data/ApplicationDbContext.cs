@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace duetGPT.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<IdentityUser>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -12,6 +12,7 @@ namespace duetGPT.Data
         }
 
         public DbSet<Document> Documents { get; set; }
+        public DbSet<ApplicationUser> ApplicationUsers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
