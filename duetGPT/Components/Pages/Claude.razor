@@ -1,5 +1,4 @@
-﻿@page "/claude"
-@page "/"
+﻿@page "/"
 @using Claudia
 @using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
@@ -10,17 +9,13 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 20px 10px; /* Adjust margins as needed */
-
+        margin: 20px 10px;
     }
     .title {
         text-align: center;
         font-size: 24px;
         font-weight: bold;
-        /*margin-top: 20px;*/
-        /*margin-bottom: 20px;*/
     }
-
     .input-container {
         position: fixed;
         bottom: 10px;
@@ -29,91 +24,119 @@
         display: flex;
         justify-content: center;
         align-items: center;
-
     }
-
     .input-box {
         width: 800px;
         min-height: 60px;
         resize: vertical;
         margin-right: 10px;
-
     }
-
-    
+    .main-content {
+        display: flex;
+        height: calc(100vh - 120px);
+    }
     .messages-container {
-        max-height: calc(100vh - 200px);
+        flex: 1;
         overflow-y: scroll;
         display: flex;
         flex-direction: column;
         align-items: center;
         padding: 20px;
- 
     }
-
+    .sidebar {
+        width: 250px;
+        padding: 20px;
+        background-color: #f8f9fa;
+    }
+    .info-box {
+        background-color: #e6f3ff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        border: 1px solid black;
+    }
+    .info-label {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
     .message {
         background-color: #f0f0f0;
         padding: 10px;
-        margin-bottom: 10px; /* Add margin-bottom for spacing */
+        margin-bottom: 10px;
         border-radius: 5px;
         text-align: left;
-        max-width: 60%; /* Limit the width of the messages */
+        max-width: 60%;
     }
-
     .message:nth-child(odd) {
         text-align: right;
-        align-self: flex-end; /* Align odd-indexed messages to the right */
+        align-self: flex-end;
     }
-
-        .message:nth-child(even) {
-            text-align: left;
-            align-self: flex-start; /* Align odd-indexed messages to the right */
-        }
+    .message:nth-child(even) {
+        text-align: left;
+        align-self: flex-start;
+    }
     .bg-blue {
-        background-color: #add8e6; /* Light blue */
-        color: #000000; /* Black text color */
+        background-color: #add8e6;
+        color: #000000;
     }
-
     .bg-green {
-        background-color: #90ee90; /* Light green */
-        color: #000000; /* Black text color */
+        background-color: #90ee90;
+        color: #000000;
     }
 </style>
 
 <div class="header-container">
     <div class="title">Chat Application</div>
-
     <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
         <Buttons>
             <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
         </Buttons>
     </DxComboBox>
 </div>
-<DxLoadingPanel @bind-Visible="@running" IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
-                IsContentBlocked="true"
-                ApplyBackgroundShading="true"
-                IndicatorAreaVisible="false"
-                Text="thinking...">
-    <div class="messages-container">
-        @{
-            var index = 0;
-            foreach (var message in formattedMessages)
-            {
-                <div class="message @(index % 2 == 0 ? "bg-blue" : "bg-green")">
-                    @(((MarkupString)message))
-                </div>
-                index++;
+
+<div class="main-content">
+    <DxLoadingPanel @bind-Visible="@running" IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                    IsContentBlocked="true"
+                    ApplyBackgroundShading="true"
+                    IndicatorAreaVisible="false"
+                    Text="thinking...">
+        <div class="messages-container">
+            @{
+                var index = 0;
+                foreach (var message in formattedMessages)
+                {
+                    <div class="message @(index % 2 == 0 ? "bg-blue" : "bg-green")">
+                        @(((MarkupString)message))
+                    </div>
+                    index++;
+                }
             }
-        }
+        </div>
+    </DxLoadingPanel>
+
+    <div class="sidebar">
+        <div class="info-box">
+            <div class="info-label">Thread ID:</div>
+            <div>@(currentThread?.Id ?? 0)</div>
+            <div class="info-label">Tokens:</div>
+            <div>@Tokens</div>
+            <div class="info-label">Cost:</div>
+            <div>$@Cost.ToString("F4")</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Select Files:</div>
+            <DxListBox Data="@AvailableFiles"
+                       @bind-Values="@SelectedFiles"
+                       TextFieldName="FileName"
+                       ValueFieldName="Id"
+                       SelectionMode="ListBoxSelectionMode.Multiple"
+                       ShowCheckboxes="true" SizeMode="SizeMode.Small"  ListBoxHeight="@null"/>
+        </div>
     </div>
-</DxLoadingPanel>
+</div>
 
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
     <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
-    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">X</button>  
+    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">New Thread</button>  
 </div>
-
-
-
-

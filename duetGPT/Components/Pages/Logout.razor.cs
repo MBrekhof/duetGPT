@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 
 namespace duetGPT.Components.Pages
@@ -8,9 +9,12 @@ namespace duetGPT.Components.Pages
         {
 
             if (SignInManager != null)
+            {
                 await SignInManager.SignOutAsync();
+                
+            }
 
-            if (RedirectManager != null)
+                if (RedirectManager != null)
                 RedirectManager.RedirectTo("/");
         }
   

@@ -1,12 +1,18 @@
 @page "/files"
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using duetGPT.Data
 @using duetGPT.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
 @inject ApplicationDbContext DbContext
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
 
 <h3>Files</h3>
+
+<p>Total number of documents: @Documents.Count</p>
 
 <DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10">
     <Columns>
@@ -14,6 +20,8 @@
         <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
         <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
         <DxGridDataColumn FieldName="ContentType" Caption="Content Type" />
+        <DxGridDataColumn FieldName="General" Caption="General" />
+        <DxGridDataColumn FieldName="OwnerName" Caption="Owner" />
     </Columns>
 </DxGrid>
 
@@ -22,23 +30,37 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var documents = await DbContext.Documents.ToListAsync();
-        Documents = documents.Select(d => new DocumentViewModel
+        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+        var user = authState.User;
+        var currentUser =  user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (currentUser != null)
         {
-            Id = d.Id,
-            FileName = d.FileName,
-            FileSize = d.Content.Length,
-            UploadedAt = d.UploadedAt,
-            ContentType = d.ContentType
-        }).ToList();
+            var documents = await DbContext.Documents
+                .Include(d => d.Owner)
+                .Where(d => d.OwnerId == currentUser)
+                .ToListAsync();
+
+            Documents = documents.Select(d => new DocumentViewModel
+            {
+                Id = d.Id,
+                FileName = d.FileName,
+                FileSize = d.Content.Length,
+                UploadedAt = d.UploadedAt,
+                ContentType = d.ContentType,
+                General = d.General,
+                OwnerName = d.Owner?.UserName ?? "Unknown"
+            }).ToList();
+        }
     }
 
     private class DocumentViewModel
     {
         public int Id { get; set; }
-        public string FileName { get; set; }
+        public required string FileName { get; set; }
         public long FileSize { get; set; }
         public DateTime UploadedAt { get; set; }
-        public string ContentType { get; set; }
+        public required string ContentType { get; set; }
+        public bool General { get; set; }
+        public string OwnerName { get; set; }
     }
 }

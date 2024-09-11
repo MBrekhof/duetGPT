@@ -112,12 +112,13 @@ app.MapAdditionalIdentityEndpoints();
 app.MapPost("/api/UploadValidation/Upload", async (HttpRequest request, FileUploadService fileUploadService) =>
 {
     var file = request.Form.Files.FirstOrDefault();
-    if (file != null)
+    var userId = request.Query["userId"].ToString();
+    if (file != null && !string.IsNullOrEmpty(userId))
     {
-        var result = await fileUploadService.UploadFile(file);
+        var result = await fileUploadService.UploadFile(file, userId);
         return result ? Results.Ok("File uploaded successfully") : Results.BadRequest("File upload failed");
     }
-    return Results.BadRequest("No file was uploaded");
+    return Results.BadRequest("No file was uploaded or user ID was not provided");
 });
 
 // Apply database migrations

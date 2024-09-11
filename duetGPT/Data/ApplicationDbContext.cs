@@ -13,6 +13,8 @@ namespace duetGPT.Data
 
         public DbSet<Document> Documents { get; set; }
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
+        public DbSet<DuetThread> Threads { get; set; }
+        public DbSet<ThreadDocument> ThreadDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

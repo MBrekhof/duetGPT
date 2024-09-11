@@ -19,7 +19,7 @@ namespace duetGPT.Services
             _dbContext = dbContext;
         }
 
-        public async Task<bool> UploadFile(IFormFile file)
+        public async Task<bool> UploadFile(IFormFile file, string userId)
         {
             try
             {
@@ -44,7 +44,8 @@ namespace duetGPT.Services
                         FileName = file.FileName,
                         ContentType = file.ContentType,
                         Content = memoryStream.ToArray(),
-                        UploadedAt = DateTime.UtcNow
+                        UploadedAt = DateTime.UtcNow,
+                        OwnerId = userId
                     };
 
                     _dbContext.Documents.Add(document);

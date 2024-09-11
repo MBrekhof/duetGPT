@@ -29,7 +29,6 @@
     <None Remove="Uploads\remote report.pdf" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Data\" />
     <Folder Include="Uploads\" />
   </ItemGroup>
 </Project>

@@ -35,12 +35,12 @@
 }
 
 @code {
-    private LoginModel loginModel = new LoginModel();
-    private string errorMessage;
+    private LoginModel loginModel = new LoginModel { Email = string.Empty, Password = string.Empty };
+    private string? errorMessage;
 
     private async Task HandleValidSubmit()
     {
-        var result = await SignInManager.PasswordSignInAsync(loginModel.Email, loginModel.Password, false, false);
+        var result = await SignInManager.PasswordSignInAsync(loginModel.Email.ToString(), loginModel.Password.ToString(), false, false);
         if (result.Succeeded)
         {
             NavigationManager.NavigateTo("/");
@@ -55,10 +55,10 @@
     {
         [Required]
         [EmailAddress]
-        public string Email { get; set; }
+        public required string Email { get; set; }
 
         [Required]
         [DataType(DataType.Password)]
-        public string Password { get; set; }
+        public required string Password { get; set; }
     }
 }

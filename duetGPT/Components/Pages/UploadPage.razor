@@ -1,8 +1,11 @@
 @page "/upload"
 @using Claudia
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using duetGPT.Data
 @rendermode InteractiveServer
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
 
 <h3>File Upload</h3>
@@ -66,6 +69,16 @@
     
     protected string GetUploadUrl(string url)
     {
+        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+        var user = authState.User;
+        if (user.Identity.IsAuthenticated)
+        {
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                url += $"?userId={userId}";
+            }
+        }
         return NavigationManager.ToAbsoluteUri(url).AbsoluteUri;
     }
 }
