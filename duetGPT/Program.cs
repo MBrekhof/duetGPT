@@ -8,8 +8,18 @@ using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -84,8 +94,9 @@ builder.Services.AddHostedService<AnthropicHealthCheckService>();
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
-
+builder.Services.AddSerilog();
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -101,6 +112,8 @@ app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
@@ -129,12 +142,11 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         context.Database.Migrate();
-        Console.WriteLine("Database migrations applied successfully.");
+        Log.Information("Database migrations applied successfully.");
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while applying database migrations.");
+        Log.Error(ex, "An error occurred while applying database migrations.");
     }
 }
 

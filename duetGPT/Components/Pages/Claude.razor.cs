@@ -1,17 +1,18 @@
 ﻿using Claudia;
+using duetGPT.Data;
 using Markdig;
 using Markdig.SyntaxHighlighting;
 using Microsoft.AspNetCore.Components;
-using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using duetGPT.Data;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
+        [Inject] private ILogger<Claude> Logger { get; set; }
+
         double temperature = 1.0;
         string textInput = "";
 
@@ -25,7 +26,6 @@ namespace duetGPT.Components.Pages
 
         private DuetThread currentThread;
 
-        // Update SelectedFiles to use IEnumerable<string>
         public List<Document> AvailableFiles { get; set; } = new List<Document>();
         public IEnumerable<string> SelectedFiles { get; set; } = Enumerable.Empty<string>();
 
@@ -33,30 +33,14 @@ namespace duetGPT.Components.Pages
         public int Tokens
         {
             get => _tokens;
-            set
-            {
-                if (_tokens != value)
-                {
-                    _tokens = value;
-                    UpdateThreadTokens();
-                    StateHasChanged();
-                }
-            }
+            set => UpdateTokensAsync(value).ConfigureAwait(false);
         }
 
         private decimal _cost;
         public decimal Cost
         {
             get => _cost;
-            set
-            {
-                if (_cost != value)
-                {
-                    _cost = value;
-                    UpdateThreadCost();
-                    StateHasChanged();
-                }
-            }
+            set => UpdateCostAsync(value).ConfigureAwait(false);
         }
 
         public enum Model
@@ -73,6 +57,7 @@ namespace duetGPT.Components.Pages
 
         protected override async Task OnInitializedAsync()
         {
+            Logger.LogInformation("Initializing Claude component");
             ModelValue = _models.FirstOrDefault();
             await LoadAvailableFiles();
             await CreateNewThread();
@@ -80,7 +65,9 @@ namespace duetGPT.Components.Pages
 
         private async Task LoadAvailableFiles()
         {
+            Logger.LogInformation("Loading available files");
             AvailableFiles = await DbContext.Documents.ToListAsync();
+            Logger.LogInformation("Loaded {Count} available files", AvailableFiles.Count);
         }
 
         private async Task CreateNewThread()
@@ -91,6 +78,7 @@ namespace duetGPT.Components.Pages
 
             if (userId != null)
             {
+                Logger.LogInformation("Creating new thread for user {UserId}", userId);
                 currentThread = new DuetThread
                 {
                     UserId = userId,
@@ -101,24 +89,41 @@ namespace duetGPT.Components.Pages
 
                 DbContext.Threads.Add(currentThread);
                 await DbContext.SaveChangesAsync();
+                Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
+            }
+            else
+            {
+                Logger.LogWarning("Attempted to create a new thread without a valid user ID");
             }
         }
 
-        private async Task UpdateThreadTokens()
+        private async Task UpdateTokensAsync(int value)
         {
-            if (currentThread != null)
+            if (_tokens != value)
             {
-                currentThread.TotalTokens = Tokens;
-                await DbContext.SaveChangesAsync();
+                _tokens = value;
+                if (currentThread != null)
+                {
+                    currentThread.TotalTokens = _tokens;
+                    await DbContext.SaveChangesAsync();
+                    Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
+                }
+                StateHasChanged();
             }
         }
 
-        private async Task UpdateThreadCost()
+        private async Task UpdateCostAsync(decimal value)
         {
-            if (currentThread != null)
+            if (_cost != value)
             {
-                currentThread.Cost = Cost;
-                await DbContext.SaveChangesAsync();
+                _cost = value;
+                if (currentThread != null)
+                {
+                    currentThread.Cost = _cost;
+                    await DbContext.SaveChangesAsync();
+                    Logger.LogInformation("Updated cost for thread {ThreadId}: {Cost}", currentThread.Id, _cost);
+                }
+                StateHasChanged();
             }
         }
 
@@ -126,6 +131,7 @@ namespace duetGPT.Components.Pages
         {
             if (currentThread != null && SelectedFiles.Any())
             {
+                Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
                 var selectedDocuments = await DbContext.Documents
                     .Where(d => SelectedFiles.Contains(d.Id.ToString()))
                     .ToListAsync();
@@ -140,12 +146,14 @@ namespace duetGPT.Components.Pages
                 }
 
                 await DbContext.SaveChangesAsync();
+                Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
             }
         }
 
         async Task SendClick()
         {
             string modelChosen = GetModelChosen(ModelValue);
+            Logger.LogInformation("Sending message using model: {Model}", modelChosen);
             running = true;
 
             var userMessage = new Message { Role = Roles.User, Content = "<user>" + textInput + "</user>"  };
@@ -173,6 +181,7 @@ namespace duetGPT.Components.Pages
                 }
                 catch (ClaudiaException ex)
                 {
+                    Logger.LogError(ex, "Error creating message stream");
                     Console.WriteLine((int)ex.Status);
                     Console.WriteLine(ex.Name);
                     Console.WriteLine(ex.Message);
@@ -198,8 +207,8 @@ namespace duetGPT.Components.Pages
                 }
 
                 // Update Tokens and Cost
-                Tokens += totalTokens;
-                Cost += CalculateCost(totalTokens, modelChosen);
+                await UpdateTokensAsync(Tokens + totalTokens);
+                await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
                 var text = userMessage.Content[0].Text;
@@ -218,6 +227,11 @@ namespace duetGPT.Components.Pages
                 await AssociateDocumentsWithThread();
 
                 textInput = ""; // clear input.
+                Logger.LogInformation("Message sent and processed successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error processing message");
             }
             finally
             {
@@ -260,12 +274,14 @@ namespace duetGPT.Components.Pages
 
         private async Task ClearThread()
         {
+            Logger.LogInformation("Clearing thread");
             chatMessages.Clear();
             formattedMessages.Clear();
-            Tokens = 0;
-            Cost = 0;
+            await UpdateTokensAsync(0);
+            await UpdateCostAsync(0);
             SelectedFiles = Enumerable.Empty<string>(); // Clear selected files
             await CreateNewThread(); // Start a new thread
+            Logger.LogInformation("Thread cleared and new thread created");
         }
     }
 }
