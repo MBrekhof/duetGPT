@@ -1,15 +1,13 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Claudia;
+using Anthropic.SDK;
 
 namespace duetGPT.Services
 {
     public class AnthropicHealthCheckService : BackgroundService
     {
         private readonly ILogger<AnthropicHealthCheckService> _logger;
-        private readonly Anthropic _anthropic;
+        private readonly AnthropicClient _anthropic;
 
-        public AnthropicHealthCheckService(ILogger<AnthropicHealthCheckService> logger, Anthropic anthropic)
+        public AnthropicHealthCheckService(ILogger<AnthropicHealthCheckService> logger, AnthropicClient anthropic)
         {
             _logger = logger;
             _anthropic = anthropic;

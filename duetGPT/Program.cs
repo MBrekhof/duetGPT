@@ -1,4 +1,3 @@
-using Claudia;
 using duetGPT.Components;
 using duetGPT.Components.Account;
 using duetGPT.Data;
@@ -60,43 +59,16 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 // Add authorization services
 builder.Services.AddAuthorization();
 
-// Add Anthropic Client
-builder.Services.AddSingleton<Anthropic>(provider =>
-{
-    var configuration = provider.GetRequiredService<IConfiguration>();
-    var logger = provider.GetRequiredService<ILogger<Program>>();
-    
-    var apiKey = configuration["Anthropic:ApiKey"];
-    if (string.IsNullOrEmpty(apiKey))
-    {
-        logger.LogError("API key for Anthropic is not configured.");
-        return null; // Return null instead of throwing an exception
-    }
-
-    try
-    {
-        var anthropic = new Anthropic
-        {
-            ApiKey = apiKey
-        };
-        logger.LogInformation("Anthropic client initialized successfully.");
-        return anthropic;
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Failed to initialize Anthropic client.");
-        return null;
-    }
-});
+// Add AnthropicService
+builder.Services.AddSingleton<AnthropicService>();
 
 // Add a hosted service to check Anthropic client status
-builder.Services.AddHostedService<AnthropicHealthCheckService>();
+//builder.Services.AddHostedService<AnthropicHealthCheckService>();
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
 builder.Services.AddSerilog();
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -112,8 +84,6 @@ app.UseAntiforgery();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
