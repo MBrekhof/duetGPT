@@ -1,5 +1,4 @@
 ﻿using Anthropic.SDK;
-using Microsoft.Extensions.Configuration;
 
 namespace duetGPT.Services
 {

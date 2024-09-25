@@ -6,3 +6,4 @@ duetGPT/appsettings.Development.json
 .DS_Store
 .vs
 *.bak
+*.txt
