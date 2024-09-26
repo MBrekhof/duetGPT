@@ -123,8 +123,7 @@ namespace duetGPT.Components.Pages
                     currentThread.TotalTokens = _tokens;
                     await DbContext.SaveChangesAsync();
                     Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
-                }
-                
+                }                
                 StateHasChanged();
             }
         }
