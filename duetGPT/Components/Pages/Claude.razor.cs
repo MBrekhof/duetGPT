@@ -125,6 +125,7 @@ namespace duetGPT.Components.Pages
                     Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
                 }                
                 StateHasChanged();
+                
             }
         }
 
