@@ -6,7 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="4.1.1" />
-    <PackageReference Include="DevExpress.Blazor" Version="24.1.5" />
+    <PackageReference Include="DevExpress.Blazor" Version="24.1.6" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Markdig.SyntaxHighlighting" Version="1.1.7" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
