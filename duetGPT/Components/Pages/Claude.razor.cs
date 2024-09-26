@@ -194,8 +194,7 @@ namespace duetGPT.Components.Pages
                     MaxTokens = 8192,
                     Stream = false,
                     Temperature = 1.0m,
-                    System = systemMessages,
-                    PromptCaching = PromptCacheType.FineGrained
+                    System = systemMessages
                 };
 
                 string markdown = string.Empty;
