@@ -244,7 +244,7 @@ namespace duetGPT.Components.Pages
                 case Model.Sonnet:
                     return AnthropicModels.Claude3Sonnet;
                 case Model.Sonnet35:
-                    return AnthropicModels.Claude35Sonnet;
+                    return "claude-3-5-sonnet-20241022"; // AnthropicModels.Claude35Sonnet;
                 case Model.Opus:
                     return AnthropicModels.Claude3Opus;
                 default:
