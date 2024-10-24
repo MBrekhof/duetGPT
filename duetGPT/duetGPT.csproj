@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Anthropic.SDK" Version="4.1.1" />
     <PackageReference Include="DevExpress.Blazor" Version="24.1.6" />
     <PackageReference Include="Markdig" Version="0.37.0" />
     <PackageReference Include="Markdig.SyntaxHighlighting" Version="1.1.7" />
@@ -23,6 +22,9 @@
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
   </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="C:\Project\Anthropic.SDK\Anthropic.SDK\Anthropic.SDK.csproj" />
+	</ItemGroup>
   <ItemGroup>
     <Content Remove="Components\Pages\Weather.razor" />
   </ItemGroup>
