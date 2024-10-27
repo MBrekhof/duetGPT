@@ -32,7 +32,7 @@ namespace duetGPT.Components.Pages
         private DuetThread currentThread;
 
         public List<Document> AvailableFiles { get; set; } = new List<Document>();
-        public IEnumerable<string> SelectedFiles { get; set; } = Enumerable.Empty<string>();
+        public IEnumerable<int> SelectedFiles { get; set; } = Enumerable.Empty<int>();
 
         private int _tokens;
         public int Tokens
@@ -123,8 +123,8 @@ namespace duetGPT.Components.Pages
                     currentThread.TotalTokens = _tokens;
                     await DbContext.SaveChangesAsync();
                     Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
-                }                
-                StateHasChanged();                
+                }
+                StateHasChanged();
             }
         }
 
@@ -149,7 +149,7 @@ namespace duetGPT.Components.Pages
             {
                 Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
                 var selectedDocuments = await DbContext.Documents
-                    .Where(d => SelectedFiles.Contains(d.Id.ToString()))
+                    .Where(d => SelectedFiles.Contains(d.Id))
                     .ToListAsync();
 
                 foreach (var document in selectedDocuments)
@@ -176,9 +176,9 @@ namespace duetGPT.Components.Pages
                 running = true;
 
 
-
+                //, new CacheControl() { Type = CacheControlType.ephemeral }
                 var userMessage = new Message(
-                  RoleType.User, textInput, new CacheControl() { Type = CacheControlType.ephemeral }
+                  RoleType.User, textInput, null
                );
 
 
@@ -275,7 +275,7 @@ namespace duetGPT.Components.Pages
             formattedMessages.Clear();
             await UpdateTokensAsync(0);
             await UpdateCostAsync(0);
-            SelectedFiles = Enumerable.Empty<string>(); // Clear selected files
+            SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
             await CreateNewThread(); // Start a new thread
             Logger.LogInformation("Thread cleared and new thread created");
         }
