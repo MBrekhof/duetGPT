@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using DevExpress.Pdf;
+using DevExpress.XtraRichEdit;
+using System.Text;
 
 namespace duetGPT.Components.Pages
 {
@@ -51,7 +54,7 @@ namespace duetGPT.Components.Pages
         public enum Model
         {
             Sonnet35,
-            Haiku,
+            Haiku35,
             Sonnet,
             Opus
         }
@@ -62,107 +65,188 @@ namespace duetGPT.Components.Pages
 
         protected override async Task OnInitializedAsync()
         {
-            Logger.LogInformation("Initializing Claude component");
-            ModelValue = _models.FirstOrDefault();
-            await LoadAvailableFiles();
-            await CreateNewThread();
+            try
+            {
+                Logger.LogInformation("Initializing Claude component");
+                ModelValue = _models.FirstOrDefault();
+                await LoadAvailableFiles();
+                await CreateNewThread();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error during component initialization");
+                throw;
+            }
         }
 
         private async Task LoadAvailableFiles()
         {
-            Logger.LogInformation("Loading available files");
-            AvailableFiles = await DbContext.Documents.ToListAsync();
-            Logger.LogInformation("Loaded {Count} available files", AvailableFiles.Count);
+            try
+            {
+                Logger.LogInformation("Loading available files");
+                AvailableFiles = await DbContext.Documents.ToListAsync();
+                Logger.LogInformation("Loaded {Count} available files", AvailableFiles.Count);
+            }
+            catch (DbUpdateException ex)
+            {
+                Logger.LogError(ex, "Database error while loading available files");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Unexpected error while loading available files");
+                throw;
+            }
         }
 
         private async Task CreateNewThread()
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            systemMessages = new List<SystemMessage>()
+            try
+            {
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                systemMessages = new List<SystemMessage>()
                 {
                      new SystemMessage("You are an expert at analyzing an user question and what they really want to know.",
                                           new CacheControl() { Type = CacheControlType.ephemeral })
                 };
-            assistantMessage = new Message
-            {
-                Role = RoleType.Assistant,
-                Content = new List<ContentBase> { new TextContent { Text = "Evaluate your think, let the user know if you do not have enough information to answer." } }
-            };
-            chatMessages = new();
-
-            if (userId != null)
-            {
-                Logger.LogInformation("Creating new thread for user {UserId}", userId);
-                currentThread = new DuetThread
+                assistantMessage = new Message
                 {
-                    UserId = userId,
-                    StartTime = DateTime.UtcNow,
-                    TotalTokens = 0,
-                    Cost = 0
+                    Role = RoleType.Assistant,
+                    Content = new List<ContentBase> { new TextContent { Text = "Evaluate your think, let the user know if you do not have enough information to answer." } }
                 };
+                chatMessages = new();
 
-                DbContext.Threads.Add(currentThread);
-                await DbContext.SaveChangesAsync();
-                Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
+                if (userId != null)
+                {
+                    Logger.LogInformation("Creating new thread for user {UserId}", userId);
+                    currentThread = new DuetThread
+                    {
+                        UserId = userId,
+                        StartTime = DateTime.UtcNow,
+                        TotalTokens = 0,
+                        Cost = 0
+                    };
+
+                    DbContext.Threads.Add(currentThread);
+                    await DbContext.SaveChangesAsync();
+                    Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
+                }
+                else
+                {
+                    Logger.LogWarning("Attempted to create a new thread without a valid user ID");
+                    throw new InvalidOperationException("User ID is required to create a new thread");
+                }
             }
-            else
+            catch (DbUpdateException ex)
             {
-                Logger.LogWarning("Attempted to create a new thread without a valid user ID");
+                Logger.LogError(ex, "Database error while creating new thread");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error creating new thread");
+                throw;
             }
         }
 
         private async Task UpdateTokensAsync(int value)
         {
-            if (_tokens != value)
+            try
             {
-                _tokens = value;
-                if (currentThread != null)
+                if (_tokens != value)
                 {
-                    currentThread.TotalTokens = _tokens;
-                    await DbContext.SaveChangesAsync();
-                    Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
+                    _tokens = value;
+                    if (currentThread != null)
+                    {
+                        currentThread.TotalTokens = _tokens;
+                        await DbContext.SaveChangesAsync();
+                        Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
+                    }
+                    StateHasChanged();
                 }
-                StateHasChanged();
+            }
+            catch (DbUpdateException ex)
+            {
+                Logger.LogError(ex, "Database error while updating tokens");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error updating tokens");
+                throw;
             }
         }
 
         private async Task UpdateCostAsync(decimal value)
         {
-            if (_cost != value)
+            try
             {
-                _cost = value;
-                if (currentThread != null)
+                if (_cost != value)
                 {
-                    currentThread.Cost = _cost;
-                    await DbContext.SaveChangesAsync();
-                    Logger.LogInformation("Updated cost for thread {ThreadId}: {Cost}", currentThread.Id, _cost);
+                    _cost = value;
+                    if (currentThread != null)
+                    {
+                        currentThread.Cost = _cost;
+                        await DbContext.SaveChangesAsync();
+                        Logger.LogInformation("Updated cost for thread {ThreadId}: {Cost}", currentThread.Id, _cost);
+                    }
+                    StateHasChanged();
                 }
-                StateHasChanged();
+            }
+            catch (DbUpdateException ex)
+            {
+                Logger.LogError(ex, "Database error while updating cost");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error updating cost");
+                throw;
             }
         }
 
         private async Task AssociateDocumentsWithThread()
         {
-            if (currentThread != null && SelectedFiles.Any())
+            try
             {
-                Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
-                var selectedDocuments = await DbContext.Documents
-                    .Where(d => SelectedFiles.Contains(d.Id))
-                    .ToListAsync();
-
-                foreach (var document in selectedDocuments)
+                if (currentThread != null && SelectedFiles.Any())
                 {
-                    currentThread.ThreadDocuments.Add(new ThreadDocument
+                    Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
+                    var selectedDocuments = await DbContext.Documents
+                        .Where(d => SelectedFiles.Contains(d.Id))
+                        .ToListAsync();
+
+                    if (currentThread.ThreadDocuments == null)
                     {
-                        ThreadId = currentThread.Id,
-                        DocumentId = document.Id
-                    });
+                        currentThread.ThreadDocuments = new List<ThreadDocument>();
+                    }
+
+                    var newThreadDocuments = selectedDocuments
+                        .Select(document => new ThreadDocument
+                        {
+                            ThreadId = currentThread.Id,
+                            DocumentId = document.Id
+                        })
+                        .ToList();
+
+                    currentThread.ThreadDocuments.AddRange(newThreadDocuments);
+
+                    await DbContext.SaveChangesAsync();
+                    Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
                 }
 
-                await DbContext.SaveChangesAsync();
-                Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
+            }
+            catch (DbUpdateException ex)
+            {
+                Logger.LogError(ex, "Database error while associating documents with thread");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error associating documents with thread");
+                throw;
             }
         }
 
@@ -175,22 +259,24 @@ namespace duetGPT.Components.Pages
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
                 running = true;
 
-
-                //, new CacheControl() { Type = CacheControlType.ephemeral }
                 var userMessage = new Message(
                   RoleType.User, textInput, null
                );
 
-
-
                 userMessages.Add(userMessage);
                 chatMessages = userMessages;
-                //chatMessages.Add(assistantMessage);
+                var extrainfo = await GetThreadDocumentsContentAsync();
+
+                if (extrainfo != null && extrainfo.Any())
+                {
+                    systemMessages.Add(new SystemMessage(string.Join("\n", extrainfo), new CacheControl() { Type = CacheControlType.ephemeral }));
+                }
+
                 var parameters = new MessageParameters()
                 {
                     Messages = chatMessages,
                     Model = modelChosen,
-                    MaxTokens = 8192,
+                    MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
                     Stream = false,
                     Temperature = 1.0m,
                     System = systemMessages
@@ -207,7 +293,7 @@ namespace duetGPT.Components.Pages
                 await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
-                markdown = res.Content[0].ToString() ?? "No answer"; //userMessage.Content[0].Text;
+                markdown = res.Content[0].ToString() ?? "No answer";
                 if (textInput != null)
                     formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
 
@@ -225,9 +311,15 @@ namespace duetGPT.Components.Pages
                 textInput = ""; // clear input.
                 Logger.LogInformation("Message sent and processed successfully");
             }
+            catch (HttpRequestException ex)
+            {
+                Logger.LogError(ex, "Network error while communicating with Anthropic API");
+                //                formattedMessages.Add(Markdown.ToHtml("Error: Unable to communicate with the AI service. Please try again later.", new MarkdownPipeline()));
+            }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error processing message");
+                //                formattedMessages.Add(Markdown.ToHtml("Error: An unexpected error occurred. Please try again.", new MarkdownPipeline()));
             }
             finally
             {
@@ -237,47 +329,130 @@ namespace duetGPT.Components.Pages
 
         private string GetModelChosen(Model modelValue)
         {
-            switch (modelValue)
+            try
             {
-                case Model.Haiku:
-                    return AnthropicModels.Claude3Haiku;
-                case Model.Sonnet:
-                    return AnthropicModels.Claude3Sonnet;
-                case Model.Sonnet35:
-                    return AnthropicModels.Claude35Sonnet;
-                case Model.Opus:
-                    return AnthropicModels.Claude3Opus;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(modelValue),
-                        $"Not expected model value: {modelValue}");
+                return modelValue switch
+                {
+                    Model.Haiku35 => "claude-3-5-haiku-20241022",// AnthropicModels.Claude3Haiku,
+                    Model.Sonnet => AnthropicModels.Claude3Sonnet,
+                    Model.Sonnet35 => AnthropicModels.Claude35Sonnet,
+                    Model.Opus => AnthropicModels.Claude3Opus,
+                    _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
+                        $"Not expected model value: {modelValue}")
+                };
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting model choice for value: {ModelValue}", modelValue);
+                throw;
             }
         }
 
         private decimal CalculateCost(int tokens, string model)
         {
-            // These are example rates, you should replace them with actual rates for each model
-            decimal rate = model switch
+            try
             {
-                AnthropicModels.Claude3Haiku => 0.00025m,
-                AnthropicModels.Claude3Sonnet => 0.0003m,
-                AnthropicModels.Claude35Sonnet => 0.00035m,
-                AnthropicModels.Claude3Opus => 0.0004m,
-                _ => 0.0003m // Default rate
-            };
+                decimal rate = model switch
+                {
+                    AnthropicModels.Claude3Haiku => 0.00025m,
+                    AnthropicModels.Claude3Sonnet => 0.0003m,
+                    AnthropicModels.Claude35Sonnet => 0.00035m,
+                    AnthropicModels.Claude3Opus => 0.0004m,
+                    _ => 0.0003m // Default rate
+                };
 
-            return tokens * rate / 1000; // Cost per 1000 tokens
+                return tokens * rate / 1000; // Cost per 1000 tokens
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error calculating cost for tokens: {Tokens}, model: {Model}", tokens, model);
+                throw;
+            }
         }
 
         private async Task ClearThread()
         {
-            Logger.LogInformation("Clearing thread");
-            chatMessages.Clear();
-            formattedMessages.Clear();
-            await UpdateTokensAsync(0);
-            await UpdateCostAsync(0);
-            SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
-            await CreateNewThread(); // Start a new thread
-            Logger.LogInformation("Thread cleared and new thread created");
+            try
+            {
+                Logger.LogInformation("Clearing thread");
+                chatMessages.Clear();
+                formattedMessages.Clear();
+                await UpdateTokensAsync(0);
+                await UpdateCostAsync(0);
+                SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
+                await CreateNewThread(); // Start a new thread
+                Logger.LogInformation("Thread cleared and new thread created");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error clearing thread");
+                throw;
+            }
         }
+
+
+
+
+        private async Task<List<string>> GetThreadDocumentsContentAsync()
+        {
+            if (currentThread == null || currentThread.ThreadDocuments == null || !currentThread.ThreadDocuments.Any())
+            {
+                Logger.LogInformation("No documents associated with the current thread.");
+                return new List<string>();
+            }
+
+            var documentIds = currentThread.ThreadDocuments.Select(td => td.DocumentId).ToList();
+            var documents = await DbContext.Documents
+                .Where(d => documentIds.Contains(d.Id))
+                .ToListAsync();
+
+            var documentContents = new List<string>();
+
+            foreach (var document in documents)
+            {
+                string plainText = string.Empty;
+
+                if (document.ContentType == "application/pdf")
+                {
+                    plainText = ExtractTextFromPdf(document.Content);
+                }
+                else if (document.ContentType == "application/msword")
+                {
+                    plainText = ExtractTextFromDocx(document.Content);
+                }
+
+                documentContents.Add("Documentname: "+document.FileName+ " "+ plainText);
+            }
+
+            Logger.LogInformation("Retrieved and converted content for {Count} documents associated with the current thread.", documentContents.Count);
+
+            return documentContents;
+        }
+
+        private string ExtractTextFromPdf(byte[] pdfContent)
+        {
+            using (var pdfDocumentProcessor = new PdfDocumentProcessor())
+            using (var stream = new MemoryStream(pdfContent)) // Convert byte array to stream
+            {
+                pdfDocumentProcessor.LoadDocument(stream);
+                var text = new StringBuilder();
+
+                for (int i = 0; i < pdfDocumentProcessor.Document.Pages.Count; i++)
+                {
+                    text.Append(pdfDocumentProcessor.GetPageText(i));
+                }
+
+                return text.ToString();
+            }
+        }
+
+        private string ExtractTextFromDocx(byte[] docxContent)
+        {
+            using var richEditDocumentServer = new RichEditDocumentServer();
+            richEditDocumentServer.LoadDocument(docxContent, DocumentFormat.OpenXml);
+            return richEditDocumentServer.Text;
+        }
+
     }
 }
+

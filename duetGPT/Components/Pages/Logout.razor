@@ -1,10 +1,11 @@
 @page "/logout"
+
 @using Microsoft.AspNetCore.Identity
 @using duetGPT.Data
 @using duetGPT.Components.Account
 @using Microsoft.Extensions.Logging
 @inject SignInManager<ApplicationUser> SignInManager
-@inject IdentityRedirectManager RedirectManager  
+@inject NavigationManager NavigationManager  
 @inject ILogger<Logout> Logger
 @rendermode InteractiveServer
 
@@ -19,3 +20,19 @@
         </div>
     </div>
 </div>
+
+@code {
+    private async Task LogoutUser()
+    {
+        try
+        {
+            await SignInManager.SignOutAsync();
+            Logger.LogInformation("User logged out.");
+            NavigationManager.NavigateTo("/Account/login");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during logout.");
+        }
+    }
+}
