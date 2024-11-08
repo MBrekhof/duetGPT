@@ -78,13 +78,46 @@ namespace duetGPT.Components.Pages
             }
         }
 
-        private async Task LoadAvailableFiles()
+
+ /*       var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+        var user = authState.User;
+        var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (currentUser != null)
+        {
+            var documents = await DbContext.Documents
+                .Include(d => d.Owner)
+                .Where(d => d.OwnerId == currentUser)
+                .ToListAsync();
+
+        Documents = documents.Select(d => new DocumentViewModel
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    FileSize = d.Content.Length,
+                    UploadedAt = d.UploadedAt,
+                    ContentType = d.ContentType,
+                    General = d.General,
+                    OwnerName = d.Owner?.UserName ?? "Unknown"
+                }).ToList();
+}
+*/
+private async Task LoadAvailableFiles()
         {
             try
             {
                 Logger.LogInformation("Loading available files");
+                var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+                var user = authState.User;
+                var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 AvailableFiles = await DbContext.Documents.ToListAsync();
-                Logger.LogInformation("Loaded {Count} available files", AvailableFiles.Count);
+                if (currentUser != null)
+                {
+                    AvailableFiles = await DbContext.Documents
+                        .Include(d => d.Owner)
+                        .Where(d => d.OwnerId == currentUser)
+                        .ToListAsync();
+                    Logger.LogInformation("Loaded {Count} available files", AvailableFiles.Count);
+                }
             }
             catch (DbUpdateException ex)
             {
