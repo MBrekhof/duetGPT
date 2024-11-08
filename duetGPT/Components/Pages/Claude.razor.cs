@@ -3,7 +3,6 @@ using Anthropic.SDK.Messaging;
 using duetGPT.Data;
 using duetGPT.Services;
 using Markdig;
-using Markdig.SyntaxHighlighting;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -265,6 +264,7 @@ namespace duetGPT.Components.Pages
 
                 userMessages.Add(userMessage);
                 chatMessages = userMessages;
+                await AssociateDocumentsWithThread();
                 var extrainfo = await GetThreadDocumentsContentAsync();
 
                 if (extrainfo != null && extrainfo.Any())
@@ -292,7 +292,7 @@ namespace duetGPT.Components.Pages
                 await UpdateTokensAsync(Tokens + totalTokens);
                 await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
 
-                var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().UseSyntaxHighlighting().Build();
+                var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
                 markdown = res.Content[0].ToString() ?? "No answer";
                 if (textInput != null)
                     formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
@@ -306,7 +306,7 @@ namespace duetGPT.Components.Pages
                     formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
                 }
 
-                await AssociateDocumentsWithThread();
+               // await AssociateDocumentsWithThread();
 
                 textInput = ""; // clear input.
                 Logger.LogInformation("Message sent and processed successfully");

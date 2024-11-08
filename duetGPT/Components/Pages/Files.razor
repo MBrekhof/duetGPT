@@ -8,14 +8,16 @@
 @inject ApplicationDbContext DbContext
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+
 @attribute [Authorize]
 
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
 
-<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10">
+<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" DataItemDeleting="OnDataItemDeleting">
     <Columns>
+        <DxGridCommandColumn EditButtonVisible="false" Width="160px" />
         <DxGridDataColumn FieldName="FileName" Caption="File Name" />
         <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
         <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
@@ -25,14 +27,33 @@
     </Columns>
 </DxGrid>
 
+
+
+
 @code {
-    private List<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
+    private IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
+    private bool isDeleteConfirmationVisible = false;
+    private int recordIdToDelete;
+    private int counter = 0;
+
+
+    async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    {
+        var x = (DocumentViewModel)e.Grid.SelectedDataItem;
+        var document = await DbContext.Documents.FindAsync(x.Id);
+        if (document != null)
+        {
+            DbContext.Documents.Remove(document);
+            await DbContext.SaveChangesAsync();
+            //Documents.Remove(Documents.First(d => d.Id == x.Id));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
         var user = authState.User;
-        var currentUser =  user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (currentUser != null)
         {
             var documents = await DbContext.Documents
@@ -41,15 +62,15 @@
                 .ToListAsync();
 
             Documents = documents.Select(d => new DocumentViewModel
-            {
-                Id = d.Id,
-                FileName = d.FileName,
-                FileSize = d.Content.Length,
-                UploadedAt = d.UploadedAt,
-                ContentType = d.ContentType,
-                General = d.General,
-                OwnerName = d.Owner?.UserName ?? "Unknown"
-            }).ToList();
+                {
+                    Id = d.Id,
+                    FileName = d.FileName,
+                    FileSize = d.Content.Length,
+                    UploadedAt = d.UploadedAt,
+                    ContentType = d.ContentType,
+                    General = d.General,
+                    OwnerName = d.Owner?.UserName ?? "Unknown"
+                }).ToList();
         }
     }
 
