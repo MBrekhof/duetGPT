@@ -15,37 +15,17 @@
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
-<div>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Actions</th>
-                <th>File Name</th>
-                <th>File Size (bytes)</th>
-                <th>Upload Date</th>
-                <th>Content Type</th>
-                <th>General</th>
-                <th>Owner</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var document in Documents)
-            {
-                <tr>
-                    <td>
-                        <button class="btn btn-danger" @onclick="() => Delete_Click(document)">Delete</button>
-                    </td>
-                    <td>@document.FileName</td>
-                    <td>@document.FileSize</td>
-                    <td>@document.UploadedAt</td>
-                    <td>@document.ContentType</td>
-                    <td>@document.General</td>
-                    <td>@document.OwnerName</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" DataItemDeleting="OnDataItemDeleting">
+    <Columns>
+        <DxGridCommandColumn EditButtonVisible="false" Width="160px" />
+        <DxGridDataColumn FieldName="FileName" Caption="File Name" />
+        <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
+        <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
+        <DxGridDataColumn FieldName="ContentType" Caption="Content Type" />
+        <DxGridDataColumn FieldName="General" Caption="General" />
+        <DxGridDataColumn FieldName="OwnerName" Caption="Owner" />
+    </Columns>
+</DxGrid>
 
 @code {
     private IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
@@ -53,18 +33,24 @@
     private int recordIdToDelete;
     private int counter = 0;
 
-    async Task Delete_Click(DocumentViewModel dataItem)
+    async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
     {
-        var document = await DbContext.Documents.FindAsync(dataItem.Id);
+        var x = (DocumentViewModel)e.DataItem;
+        var document = await DbContext.Documents.FindAsync(x.Id);
         if (document != null)
         {
             DbContext.Documents.Remove(document);
             await DbContext.SaveChangesAsync();
-            Documents.Remove(dataItem);
+            await LoadDocumentsAsync(); // Refresh the grid data
         }
     }
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadDocumentsAsync();
+    }
+
+    private async Task LoadDocumentsAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
