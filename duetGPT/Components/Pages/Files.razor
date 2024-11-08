@@ -4,31 +4,48 @@
 @using duetGPT.Data
 @using duetGPT.Services
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.ChangeTracking;
 @using Microsoft.AspNetCore.Identity
 @inject ApplicationDbContext DbContext
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-
-@attribute [Authorize]
+@rendermode InteractiveServer
+@attribute [Authorize] 
 
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
-
-<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" DataItemDeleting="OnDataItemDeleting">
-    <Columns>
-        <DxGridCommandColumn EditButtonVisible="false" Width="160px" />
-        <DxGridDataColumn FieldName="FileName" Caption="File Name" />
-        <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
-        <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
-        <DxGridDataColumn FieldName="ContentType" Caption="Content Type" />
-        <DxGridDataColumn FieldName="General" Caption="General" />
-        <DxGridDataColumn FieldName="OwnerName" Caption="Owner" />
-    </Columns>
-</DxGrid>
-
-
-
+<div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Actions</th>
+                <th>File Name</th>
+                <th>File Size (bytes)</th>
+                <th>Upload Date</th>
+                <th>Content Type</th>
+                <th>General</th>
+                <th>Owner</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var document in Documents)
+            {
+                <tr>
+                    <td>
+                        <button class="btn btn-danger" @onclick="() => Delete_Click(document)">Delete</button>
+                    </td>
+                    <td>@document.FileName</td>
+                    <td>@document.FileSize</td>
+                    <td>@document.UploadedAt</td>
+                    <td>@document.ContentType</td>
+                    <td>@document.General</td>
+                    <td>@document.OwnerName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @code {
     private IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
@@ -36,22 +53,20 @@
     private int recordIdToDelete;
     private int counter = 0;
 
-
-    async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    async Task Delete_Click(DocumentViewModel dataItem)
     {
-        var x = (DocumentViewModel)e.Grid.SelectedDataItem;
-        var document = await DbContext.Documents.FindAsync(x.Id);
+        var document = await DbContext.Documents.FindAsync(dataItem.Id);
         if (document != null)
         {
             DbContext.Documents.Remove(document);
             await DbContext.SaveChangesAsync();
-            //Documents.Remove(Documents.First(d => d.Id == x.Id));
+            Documents.Remove(dataItem);
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
         var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (currentUser != null)
@@ -82,6 +97,6 @@
         public DateTime UploadedAt { get; set; }
         public required string ContentType { get; set; }
         public bool General { get; set; }
-        public string OwnerName { get; set; }
+        public string? OwnerName { get; set; }
     }
 }
