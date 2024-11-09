@@ -449,12 +449,15 @@ private async Task LoadAvailableFiles()
                 {
                     plainText = ExtractTextFromPdf(document.Content);
                 }
-                else if (document.ContentType == "application/msword")
+                else if ( document.FileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
                 {
                     plainText = ExtractTextFromDocx(document.Content);
                 }
-
-                documentContents.Add("Documentname: "+document.FileName+ " "+ plainText);
+                else if (document.ContentType == "application/msword")
+                {
+                    plainText = ExtractTextFromDoc(document.Content);
+                }
+                documentContents.Add("Documentname: " + document.FileName + " " + plainText);
             }
 
             Logger.LogInformation("Retrieved and converted content for {Count} documents associated with the current thread.", documentContents.Count);
@@ -485,7 +488,12 @@ private async Task LoadAvailableFiles()
             richEditDocumentServer.LoadDocument(docxContent, DocumentFormat.OpenXml);
             return richEditDocumentServer.Text;
         }
-
+        private string ExtractTextFromDoc(byte[] docxContent)
+        {
+            using var richEditDocumentServer = new RichEditDocumentServer();
+            richEditDocumentServer.LoadDocument(docxContent, DocumentFormat.Doc);
+            return richEditDocumentServer.Text;
+        }
     }
 }
 
