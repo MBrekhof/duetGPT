@@ -301,7 +301,12 @@ private async Task LoadAvailableFiles()
                 var extrainfo = await GetThreadDocumentsContentAsync();
 
                 if (extrainfo != null && extrainfo.Any())
+                { 
+                    systemMessages = new List<SystemMessage>()
                 {
+                    new SystemMessage("You are an expert at analyzing an user question and what they really want to know.",
+                        new CacheControl() { Type = CacheControlType.ephemeral })
+                };
                     systemMessages.Add(new SystemMessage(string.Join("\n", extrainfo), new CacheControl() { Type = CacheControlType.ephemeral }));
                 }
 
