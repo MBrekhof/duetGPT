@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,6 +17,10 @@ namespace duetGPT.Data
         [ForeignKey("UserId")]
         public ApplicationUser User { get; set; }
 
+        
+        [StringLength(100)]
+        public string Title { get; set; }
+
         [Required]
         public DateTime StartTime { get; set; }
 
@@ -25,6 +30,8 @@ namespace duetGPT.Data
         public decimal Cost { get; set; }
 
         public List<ThreadDocument> ThreadDocuments { get; set; }
+
+        public virtual ICollection<DuetMessage> Messages { get; set; } = new Collection<DuetMessage>();
     }
 
     public class ThreadDocument

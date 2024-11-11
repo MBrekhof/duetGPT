@@ -1,0 +1,43 @@
+@page "/messages"
+
+@using Microsoft.EntityFrameworkCore
+@using DevExpress.Blazor
+@using duetGPT.Data
+@inject ApplicationDbContext Context
+
+<h3>Messages</h3>
+
+<DxGrid Data="@GridDataSource"
+        ShowFilterRow="true"
+        ShowPager="true"
+        ShowGroupPanel="true"
+        PageSize="20"
+        KeyFieldName="Id">
+    <Columns>
+        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
+        <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
+         <DxGridDataColumn FieldName="Thread" Caption="Thread" /> 
+        <DxGridDataColumn FieldName="Created" Caption="Created" Width="150px" DisplayFormat="g" />
+        <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
+        <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
+    </Columns>
+</DxGrid>
+
+@code {
+    private List<DuetMessage> GridDataSource { get; set; }
+
+protected override async Task OnInitializedAsync()
+{
+    try
+    {
+        GridDataSource = await Context.Set<DuetMessage>()
+            .OrderByDescending(m => m.Created)
+            .ToListAsync();
+        Console.WriteLine($"Fetched {GridDataSource.Count} messages.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error fetching messages: {ex.Message}");
+    }
+}
+}

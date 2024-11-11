@@ -1,6 +1,7 @@
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using Markdig;
+using duetGPT.Data;
 
 namespace duetGPT.Components.Pages
 {
@@ -19,13 +20,25 @@ namespace duetGPT.Components.Pages
                   RoleType.User, textInput, null
                );
 
+                // Create and save DuetMessage for user input
+                var duetUserMessage = new DuetMessage
+                {
+                    ThreadId = currentThread.Id,
+                    Role = "user",
+                    Content = textInput,
+                    TokenCount = 0, // Will be updated when we get response
+                    MessageCost = 0 // Will be updated when we get response
+                };
+                DbContext.Add(duetUserMessage);
+                await DbContext.SaveChangesAsync();
+
                 userMessages.Add(userMessage);
                 chatMessages = userMessages;
                 await AssociateDocumentsWithThread();
                 var extrainfo = await GetThreadDocumentsContentAsync();
 
                 if (extrainfo != null && extrainfo.Any())
-                { 
+                {
                     systemMessages = new List<SystemMessage>()
                 {
                     new SystemMessage("You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also",
@@ -50,6 +63,24 @@ namespace duetGPT.Components.Pages
                 var res = await client.Messages.GetClaudeMessageAsync(parameters);
                 userMessages.Add(res.Message);
                 Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
+
+                // Update user message with token count and cost
+                duetUserMessage.TokenCount = res.Usage.InputTokens;
+                duetUserMessage.MessageCost = CalculateCost(res.Usage.InputTokens, modelChosen);
+                await DbContext.SaveChangesAsync();
+
+                // Create and save DuetMessage for assistant response
+                var duetAssistantMessage = new DuetMessage
+                {
+                    ThreadId = currentThread.Id,
+                    Role = "assistant",
+                    Content = res.Content[0].ToString() ?? "No answer",
+                    TokenCount = res.Usage.OutputTokens,
+                    MessageCost = CalculateCost(res.Usage.OutputTokens, modelChosen)
+                };
+                DbContext.Add(duetAssistantMessage);
+                await DbContext.SaveChangesAsync();
+
                 // Update Tokens and Cost
                 await UpdateTokensAsync(Tokens + totalTokens);
                 await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
