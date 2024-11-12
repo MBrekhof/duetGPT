@@ -11,6 +11,7 @@
     <PackageReference Include="DevExpress.Pdf.Core" Version="24.1.7" />
     <PackageReference Include="DevExpress.RichEdit.Core" Version="24.1.7" />
     <PackageReference Include="DevExpress.RichEdit.Export" Version="24.1.7" />
+    <PackageReference Include="EntityFrameworkCore.NamingConventions" Version="8.0.0" />
     <PackageReference Include="Markdig" Version="0.38.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">

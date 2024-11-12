@@ -15,9 +15,17 @@
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
-<DxGrid Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" DataItemDeleting="OnDataItemDeleting">
+<DxGrid @ref="Grid" Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" >
     <Columns>
-        <DxGridCommandColumn EditButtonVisible="false" Width="160px" />
+        <DxGridCommandColumn Width="160px">
+           <CellDisplayTemplate>
+             <div class="grid-cell-align-center">
+               <DxButton Text="Delete"
+                        RenderStyle="ButtonRenderStyle.Danger"
+                        Click="@(() => Delete_Click((DocumentViewModel)context.DataItem))"/>
+             </div>
+          </CellDisplayTemplate>
+        </DxGridCommandColumn> />
         <DxGridDataColumn FieldName="FileName" Caption="File Name" />
         <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
         <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
@@ -28,14 +36,15 @@
 </DxGrid>
 
 @code {
+    IGrid? Grid { get; set; }
     private IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
     private bool isDeleteConfirmationVisible = false;
     private int recordIdToDelete;
     private int counter = 0;
 
-    async Task OnDataItemDeleting(GridDataItemDeletingEventArgs e)
+    async Task Delete_Click(DocumentViewModel dataItem)
     {
-        var x = (DocumentViewModel)e.DataItem;
+        var x = dataItem;
         var document = await DbContext.Documents.FindAsync(x.Id);
         if (document != null)
         {

@@ -1,3 +1,4 @@
+using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using Markdig;
@@ -81,6 +82,12 @@ namespace duetGPT.Components.Pages
                 DbContext.Add(duetAssistantMessage);
                 await DbContext.SaveChangesAsync();
 
+                // Generate thread title after first message exchange if not already set
+                if (string.IsNullOrEmpty(currentThread.Title))
+                {
+                    await GenerateThreadTitle(client, modelChosen, textInput, res.Content[0].ToString());
+                }
+
                 // Update Tokens and Cost
                 await UpdateTokensAsync(Tokens + totalTokens);
                 await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
@@ -113,6 +120,57 @@ namespace duetGPT.Components.Pages
             finally
             {
                 running = false;
+            }
+        }
+
+        private async Task GenerateThreadTitle(AnthropicClient client, string modelChosen, string userMessage, string assistantResponse)
+        {
+            try
+            {
+                var titlePrompt = new Message(
+                    RoleType.User,
+                    $"Based on this conversation, generate a concise and descriptive title (maximum 100 characters):\n\nUser: {userMessage}\n\nAssistant: {assistantResponse}",
+                    null
+                );
+
+                var titleParameters = new MessageParameters()
+                {
+                    Messages = new List<Message> { titlePrompt },
+                    Model = modelChosen,
+                    MaxTokens = 100,
+                    Stream = false,
+                    Temperature = 0.7m,
+                    System = new List<SystemMessage>
+                    {
+                        new SystemMessage(
+                            "Generate a concise, descriptive title that captures the main topic or purpose of the conversation. The title should be clear and informative, but not exceed 100 characters.",
+                            new CacheControl() { Type = CacheControlType.ephemeral }
+                        )
+                    }
+                };
+
+                var titleResponse = await client.Messages.GetClaudeMessageAsync(titleParameters);
+                var generatedTitle = titleResponse.Content[0].ToString().Trim('"', ' ', '\n');
+
+                // Ensure title doesn't exceed 100 characters
+                if (generatedTitle.Length > 100)
+                {
+                    generatedTitle = generatedTitle.Substring(0, 97) + "...";
+                }
+
+                // Update thread title
+                currentThread.Title = generatedTitle;
+                DbContext.Update(currentThread);
+                await DbContext.SaveChangesAsync();
+
+                // Update tokens and cost
+                await UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
+                await UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error generating thread title");
+                // Don't throw - we don't want to interrupt the main conversation flow if title generation fails
             }
         }
 
