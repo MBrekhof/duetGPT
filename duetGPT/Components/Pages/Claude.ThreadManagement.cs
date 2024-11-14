@@ -7,11 +7,11 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-        private async Task CreateNewThread()
+        private  void CreateNewThread()
         {
             try
             {
-                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var authState =  AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
                 var user = authState.User;
                 var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 systemMessages = new List<SystemMessage>()
@@ -38,7 +38,7 @@ namespace duetGPT.Components.Pages
                     };
 
                     DbContext.Threads.Add(currentThread);
-                    await DbContext.SaveChangesAsync();
+                    DbContext.SaveChanges();
                     Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
                 }
                 else
@@ -66,10 +66,10 @@ namespace duetGPT.Components.Pages
                 Logger.LogInformation("Clearing thread");
                 chatMessages.Clear();
                 formattedMessages.Clear();
-                await UpdateTokensAsync(0);
-                await UpdateCostAsync(0);
+                UpdateTokensAsync(0);
+                 UpdateCostAsync(0);
                 SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
-                await CreateNewThread(); // Start a new thread
+                 CreateNewThread(); // Start a new thread
                 Logger.LogInformation("Thread cleared and new thread created");
             }
             catch (Exception ex)
@@ -79,16 +79,16 @@ namespace duetGPT.Components.Pages
             }
         }
 
-        private async Task AssociateDocumentsWithThread()
+        private void  AssociateDocumentsWithThread()
         {
             try
             {
                 if (currentThread != null && SelectedFiles.Any())
                 {
                     Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
-                    var selectedDocuments = await DbContext.Documents
+                    var selectedDocuments =  DbContext.Documents
                         .Where(d => SelectedFiles.Contains(d.Id))
-                        .ToListAsync();
+                        .ToList();
 
                     if (currentThread.ThreadDocuments == null)
                     {
@@ -105,7 +105,8 @@ namespace duetGPT.Components.Pages
 
                     currentThread.ThreadDocuments.AddRange(newThreadDocuments);
 
-                    await DbContext.SaveChangesAsync();
+                    //await DbContext.SaveChangesAsync();
+                    DbContext.SaveChanges();
                     Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
                 }
 
@@ -152,6 +153,11 @@ namespace duetGPT.Components.Pages
                 else if (document.ContentType == "application/msword")
                 {
                     plainText = ExtractTextFromDoc(document.Content);
+                }
+                else if (document.ContentType == "text/plain" || document.ContentType == "application/octet-stream" ||
+             document.ContentType == "application/json" || document.ContentType == "text/xml")
+                {
+                    plainText = System.Text.Encoding.UTF8.GetString(document.Content);
                 }
                 documentContents.Add("Documentname: " + document.FileName + " " + plainText);
             }

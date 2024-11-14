@@ -16,11 +16,13 @@
         ShowPager="true"
         ShowGroupPanel="true"
         PageSize="20"
+        
         KeyFieldName="Id">
+
     <Columns>
-        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
+        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px"  />
         <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
-        <DxGridDataColumn FieldName="Thread.Title" Caption="Thread">
+        <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="0" SortMode="GridColumnSortMode.Custom">
             <CellDisplayTemplate>
                 @{
                     var message = (context.DataItem as DuetMessage);
@@ -38,6 +40,7 @@
 @code {
     private List<DuetMessage> GridDataSource { get; set; }
 
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -49,6 +52,7 @@
             GridDataSource = await Context.Set<DuetMessage>()
                 .Include(m => m.Thread)
                 .Where(m => m.Thread.UserId == userId)
+                .OrderByDescending(m => m.Thread.StartTime)
                 .Select(m => new DuetMessage
                     {
                         Id = m.Id,
@@ -60,6 +64,19 @@
                         MessageCost = m.MessageCost
                     })
                 .ToListAsync();
+
+            void Grid_CustomSort(GridCustomSortEventArgs e)
+            {
+                if (e.FieldName == "Thread.Title")
+                {
+
+                        var date1 = (DateTime)e.GetRow1Value("Created");
+                        var date2 = (DateTime)e.GetRow2Value("Created");
+                        e.Result = date2.CompareTo(date1);
+                    e.Handled = true;
+                }
+            }
+
             Console.WriteLine($"Fetched {GridDataSource.Count} messages for user {userId}.");
         }
         catch (Exception ex)

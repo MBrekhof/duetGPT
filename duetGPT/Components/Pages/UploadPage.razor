@@ -18,7 +18,7 @@
     </div>
     <DxUpload Name="myFile"
               MaxFileSize="52428800"
-              AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" ,".rtf",".sql"})"
+              AllowedFileExtensions="@(new List<string> { ".pdf", ".doc", ".docx", ".txt" ,".rtf",".sql",".csv",".json",".log",".xml"})"
               UploadUrl="@GetUploadUrl("api/UploadValidation/Upload/")"
               SelectedFilesChanged="@SelectedFilesChanged"
               CssClass="@(SelectedFilesCount > 0 ? "w-100" : "")">
@@ -56,7 +56,18 @@
     .d-none {
         display: none;
     }
+
+    .info-panel {
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+        background-color: #f9f9f9;
+    }
 </style>
+
+<div class="info-panel">
+    <p>Acceptable file formats are: .txt, .sql, .doc(x), .rtf, .json, .rtf, .xml, .log, .pdf</p>
+</div>
 
 @code {
     int SelectedFilesCount { get; set; }

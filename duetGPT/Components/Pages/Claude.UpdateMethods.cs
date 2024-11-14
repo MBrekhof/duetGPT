@@ -4,7 +4,7 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-        private async Task UpdateTokensAsync(int value)
+        private void UpdateTokensAsync(int value)
         {
             try
             {
@@ -14,7 +14,7 @@ namespace duetGPT.Components.Pages
                     if (currentThread != null)
                     {
                         currentThread.TotalTokens = _tokens;
-                        await DbContext.SaveChangesAsync();
+                         DbContext.SaveChanges();
                         Logger.LogInformation("Updated tokens for thread {ThreadId}: {Tokens}", currentThread.Id, _tokens);
                     }
                     StateHasChanged();
@@ -32,7 +32,7 @@ namespace duetGPT.Components.Pages
             }
         }
 
-        private async Task UpdateCostAsync(decimal value)
+        private void UpdateCostAsync(decimal value)
         {
             try
             {
@@ -42,7 +42,7 @@ namespace duetGPT.Components.Pages
                     if (currentThread != null)
                     {
                         currentThread.Cost = _cost;
-                        await DbContext.SaveChangesAsync();
+                        DbContext.SaveChanges();
                         Logger.LogInformation("Updated cost for thread {ThreadId}: {Cost}", currentThread.Id, _cost);
                     }
                     StateHasChanged();

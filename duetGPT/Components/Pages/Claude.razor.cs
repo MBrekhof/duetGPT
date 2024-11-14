@@ -37,14 +37,14 @@ namespace duetGPT.Components.Pages
         public int Tokens
         {
             get => _tokens;
-            set => UpdateTokensAsync(value).ConfigureAwait(false);
+            set => UpdateTokensAsync(value);
         }
 
         private decimal _cost;
         public decimal Cost
         {
             get => _cost;
-            set => UpdateCostAsync(value).ConfigureAwait(false);
+            set => UpdateCostAsync(value);
         }
 
         public enum Model
@@ -66,7 +66,7 @@ namespace duetGPT.Components.Pages
                 Logger.LogInformation("Initializing Claude component");
                 ModelValue = _models.FirstOrDefault();
                 await LoadAvailableFiles();
-                await CreateNewThread();
+                CreateNewThread();
             }
             catch (Exception ex)
             {

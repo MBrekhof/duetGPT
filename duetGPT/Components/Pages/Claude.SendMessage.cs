@@ -31,11 +31,12 @@ namespace duetGPT.Components.Pages
                     MessageCost = 0 // Will be updated when we get response
                 };
                 DbContext.Add(duetUserMessage);
-                await DbContext.SaveChangesAsync();
+                //await DbContext.SaveChangesAsync();
+                DbContext.SaveChanges();
 
                 userMessages.Add(userMessage);
                 chatMessages = userMessages;
-                await AssociateDocumentsWithThread();
+                AssociateDocumentsWithThread();
                 var extrainfo = await GetThreadDocumentsContentAsync();
 
                 if (extrainfo != null && extrainfo.Any())
@@ -68,7 +69,7 @@ namespace duetGPT.Components.Pages
                 // Update user message with token count and cost
                 duetUserMessage.TokenCount = res.Usage.InputTokens;
                 duetUserMessage.MessageCost = CalculateCost(res.Usage.InputTokens, modelChosen);
-                await DbContext.SaveChangesAsync();
+                DbContext.SaveChanges();
 
                 // Create and save DuetMessage for assistant response
                 var duetAssistantMessage = new DuetMessage
@@ -80,7 +81,7 @@ namespace duetGPT.Components.Pages
                     MessageCost = CalculateCost(res.Usage.OutputTokens, modelChosen)
                 };
                 DbContext.Add(duetAssistantMessage);
-                await DbContext.SaveChangesAsync();
+                DbContext.SaveChanges();
 
                 // Generate thread title after first message exchange if not already set
                 if (string.IsNullOrEmpty(currentThread.Title))
@@ -89,8 +90,8 @@ namespace duetGPT.Components.Pages
                 }
 
                 // Update Tokens and Cost
-                await UpdateTokensAsync(Tokens + totalTokens);
-                await UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
+                UpdateTokensAsync(Tokens + totalTokens);
+                UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
                 markdown = res.Content[0].ToString() ?? "No answer";
@@ -161,11 +162,11 @@ namespace duetGPT.Components.Pages
                 // Update thread title
                 currentThread.Title = generatedTitle;
                 DbContext.Update(currentThread);
-                await DbContext.SaveChangesAsync();
+                DbContext.SaveChanges();
 
                 // Update tokens and cost
-                await UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
-                await UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
+                UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
+                 UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
             }
             catch (Exception ex)
             {
