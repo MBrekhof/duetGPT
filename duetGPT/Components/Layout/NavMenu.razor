@@ -2,9 +2,11 @@
 @using Microsoft.AspNetCore.Identity
 @using duetGPT.Data
 @using DevExpress.Blazor
+@using Microsoft.EntityFrameworkCore
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject SignInManager<ApplicationUser> SignInManager
+@inject ApplicationDbContext Context
 
 <div id="sidebar">
     <DxGridLayout CssClass="page-layout" RowSpacing="1.5rem">
@@ -22,8 +24,6 @@
                 <Template>
                     <span class="logo" style="color: white; font-size: larger; font-weight: bold;">BCH bv</span>
                 </Template>
-            </DxGridLayoutItem>
-            <DxGridLayoutItem Area="menu-button" CssClass="sidebar-header menu-button-container">
                 <Template>
                     <div class="menu-button" onclick="document.getElementById('sidebar').classList.toggle('expanded')"></div>
                 </Template>
@@ -36,6 +36,7 @@
                                <DxMenuItem NavigateUrl="/claude" Text="Claude" CssClass="menu-item" IconCssClass="icon weather-icon"></DxMenuItem>
                                <DxMenuItem NavigateUrl="/files" Text="Files" CssClass="menu-item" IconCssClass="icon doc-icon"></DxMenuItem>
                                <DxMenuItem NavigateUrl="/upload" Text="Upload" CssClass="menu-item" IconCssClass="icon grid-icon"></DxMenuItem>
+                               <DxMenuItem NavigateUrl="/prompts" Text="Prompts" CssClass="menu-item" IconCssClass="icon cards-icon"></DxMenuItem>
                                <DxMenuItem NavigateUrl="/messages" Text="Messages" CssClass="menu-item" IconCssClass="icon counter-icon"></DxMenuItem>
                                <AuthorizeView>
                                    <Authorized>

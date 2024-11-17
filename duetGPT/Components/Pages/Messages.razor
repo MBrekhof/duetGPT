@@ -22,7 +22,7 @@
     <Columns>
         <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px"  />
         <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
-        <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="0" SortMode="GridColumnSortMode.Custom">
+        <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="1" >
             <CellDisplayTemplate>
                 @{
                     var message = (context.DataItem as DuetMessage);
@@ -31,7 +31,7 @@
             </CellDisplayTemplate>
         </DxGridDataColumn> 
         <DxGridDataColumn FieldName="Content" Caption="Content" Width="300px" />
-        <DxGridDataColumn FieldName="Created" Caption="Created" Width="150px" DisplayFormat="g" />
+        <DxGridDataColumn FieldName="Created" Caption="Created" GroupIndex="0" Width="150px" DisplayFormat="g" />
         <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
         <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
     </Columns>
@@ -39,7 +39,7 @@
 
 @code {
     private List<DuetMessage> GridDataSource { get; set; }
-
+    bool PopupVisible { get; set; } = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -52,7 +52,7 @@
             GridDataSource = await Context.Set<DuetMessage>()
                 .Include(m => m.Thread)
                 .Where(m => m.Thread.UserId == userId)
-                .OrderByDescending(m => m.Thread.StartTime)
+                //.OrderByDescending(m => m.Thread.StartTime)
                 .Select(m => new DuetMessage
                     {
                         Id = m.Id,

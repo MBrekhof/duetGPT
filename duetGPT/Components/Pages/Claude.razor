@@ -85,15 +85,31 @@
         background-color: #90ee90;
         color: #000000;
     }
+    .combobox-container {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
 </style>
 
 <div class="header-container">
     <div class="title">Chat Application</div>
-    <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
-        <Buttons>
-            <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
-        </Buttons>
-    </DxComboBox>
+    <div class="combobox-container">
+        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
+            <Buttons>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+            </Buttons>
+        </DxComboBox>
+        <DxComboBox Data="@Prompts" 
+                    @bind-Value="@SelectedPrompt" 
+                    TextFieldName="Name"
+                    ValueFieldName="Name"
+                    NullText="Default">
+            <Buttons>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+            </Buttons>
+        </DxComboBox>
+    </div>
 </div>
 
 <div class="main-content">

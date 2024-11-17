@@ -3,6 +3,7 @@ using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using Markdig;
 using duetGPT.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace duetGPT.Components.Pages
 {
@@ -41,11 +42,26 @@ namespace duetGPT.Components.Pages
 
                 if (extrainfo != null && extrainfo.Any())
                 {
+                    string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
+
+                    // Get selected prompt content if available
+                    if (!string.IsNullOrEmpty(SelectedPrompt) )
+                    {
+                        var selectedPromptContent = await DbContext.Set<Prompt>()
+                            .Where(p => p.Name == SelectedPrompt)
+                            .Select(p => p.Content)
+                            .FirstOrDefaultAsync();
+
+                        if (!string.IsNullOrEmpty(selectedPromptContent))
+                        {
+                            systemPrompt = selectedPromptContent;
+                        }
+                    }
+
                     systemMessages = new List<SystemMessage>()
-                {
-                    new SystemMessage("You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also",
-                        new CacheControl() { Type = CacheControlType.ephemeral })
-                };
+                    {
+                        new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                    };
                     systemMessages.Add(new SystemMessage(string.Join("\n", extrainfo), new CacheControl() { Type = CacheControlType.ephemeral }));
                 }
 
@@ -166,7 +182,7 @@ namespace duetGPT.Components.Pages
 
                 // Update tokens and cost
                 UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
-                 UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
+                UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
             }
             catch (Exception ex)
             {

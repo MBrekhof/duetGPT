@@ -33,6 +33,10 @@ namespace duetGPT.Components.Pages
         public List<Document> AvailableFiles { get; set; } = new List<Document>();
         public IEnumerable<int> SelectedFiles { get; set; } = Enumerable.Empty<int>();
 
+        // Added for Prompts support
+        public List<Prompt> Prompts { get; set; } = new List<Prompt>();
+        public string? SelectedPrompt { get; set; } = "Default";
+
         private int _tokens;
         public int Tokens
         {
@@ -66,11 +70,27 @@ namespace duetGPT.Components.Pages
                 Logger.LogInformation("Initializing Claude component");
                 ModelValue = _models.FirstOrDefault();
                 await LoadAvailableFiles();
+                await LoadPrompts();
                 CreateNewThread();
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error during component initialization");
+                throw;
+            }
+        }
+
+        private async Task LoadPrompts()
+        {
+            try
+            {
+                Logger.LogInformation("Loading prompts");
+                Prompts = await DbContext.Set<Prompt>().ToListAsync();
+                Logger.LogInformation("Loaded {Count} prompts", Prompts.Count);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading prompts");
                 throw;
             }
         }

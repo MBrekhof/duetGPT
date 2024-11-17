@@ -1,0 +1,143 @@
+@page "/prompts"
+@using Microsoft.EntityFrameworkCore
+@using DevExpress.Blazor
+@using duetGPT.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@rendermode InteractiveServer
+@inject ApplicationDbContext Context
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Authorize]
+
+<h3>Prompts</h3>
+
+<div class="mb-3">
+    <DxButton Text="New Prompt" IconCssClass="oi oi-plus" Click="@(() => ShowEditPopup(null))" />
+</div>
+
+<DxGrid Data="@GridDataSource"
+        ShowFilterRow="true"
+        ShowPager="true"
+        PageSize="20"
+        KeyFieldName="PromptID">
+    <Columns>
+        <DxGridDataColumn FieldName="PromptID" Caption="ID" Width="80px" />
+        <DxGridDataColumn FieldName="Title" Caption="Title" Width="200px" />
+        <DxGridDataColumn FieldName="Name" Caption="Name" Width="150px" />
+        <DxGridDataColumn FieldName="Content" Caption="Content" Width="400px" />
+        <DxGridDataColumn Width="120px" Caption="Actions">
+            <CellDisplayTemplate>
+                @{
+                    var prompt = (context.DataItem as Prompt);
+                    <DxButton Text="Edit" IconCssClass="oi oi-pencil" Click="@(() => ShowEditPopup(prompt))" RenderStyle="ButtonRenderStyle.Secondary" />
+                    <DxButton Text="Delete" IconCssClass="oi oi-trash" Click="@(() => DeletePrompt(prompt.PromptID))" RenderStyle="ButtonRenderStyle.Danger" />
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+    </Columns>
+</DxGrid>
+
+<DxPopup @bind-Visible="@PopupVisible" HeaderText="@PopupTitle" Width="600px">
+    <Content>
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Title</label>
+                <DxTextBox @bind-Text="@CurrentPrompt.Title" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Name</label>
+                <DxTextBox @bind-Text="@CurrentPrompt.Name" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col">
+                <label class="form-label">Content</label>
+                <DxMemo @bind-Text="@CurrentPrompt.Content" Rows="5" />
+            </div>
+        </div>
+        <div class="row">
+            <div class="col">
+                <DxButton Text="Save" Click="@SavePrompt" RenderStyle="ButtonRenderStyle.Primary" />
+                <DxButton Text="Cancel" Click="@(() => PopupVisible = false)" RenderStyle="ButtonRenderStyle.Secondary" />
+            </div>
+        </div>
+    </Content>
+</DxPopup>
+
+@code {
+    private List<Prompt> GridDataSource { get; set; } = new();
+    private bool PopupVisible { get; set; }
+    private string PopupTitle => CurrentPrompt?.PromptID == 0 ? "New Prompt" : "Edit Prompt";
+    private Prompt CurrentPrompt { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            GridDataSource = await Context.Set<Prompt>().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching prompts: {ex.Message}");
+        }
+    }
+
+    private void ShowEditPopup(Prompt? prompt)
+    {
+        CurrentPrompt = prompt != null ? new Prompt
+        {
+            PromptID = prompt.PromptID,
+            Title = prompt.Title,
+            Name = prompt.Name,
+            Content = prompt.Content
+        } : new Prompt();
+        PopupVisible = true;
+    }
+
+    private async Task SavePrompt()
+    {
+        try
+        {
+            if (CurrentPrompt.PromptID == 0)
+            {
+                Context.Add(CurrentPrompt);
+            }
+            else
+            {
+                Context.Update(CurrentPrompt);
+            }
+            await Context.SaveChangesAsync();
+            await LoadData();
+            PopupVisible = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving prompt: {ex.Message}");
+        }
+    }
+
+    private async Task DeletePrompt(int promptId)
+    {
+        try
+        {
+            var prompt = await Context.Set<Prompt>().FindAsync(promptId);
+            if (prompt != null)
+            {
+                Context.Remove(prompt);
+                await Context.SaveChangesAsync();
+                await LoadData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting prompt: {ex.Message}");
+        }
+    }
+}
