@@ -7,18 +7,35 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-        private  void CreateNewThread()
+        private async void CreateNewThread()
         {
             try
             {
-                var authState =  AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+                var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
                 var user = authState.User;
                 var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
+
+                // Get selected prompt content if available
+                if (!string.IsNullOrEmpty(SelectedPrompt))
+                {
+                    var selectedPromptContent = await DbContext.Set<Prompt>()
+                        .Where(p => p.Name == SelectedPrompt)
+                        .Select(p => p.Content)
+                        .FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(selectedPromptContent))
+                    {
+                        systemPrompt = selectedPromptContent;
+                    }
+                }
+
                 systemMessages = new List<SystemMessage>()
                 {
-                     new SystemMessage("You are an expert at analyzing an user question and what they really want to know.",
-                                          new CacheControl() { Type = CacheControlType.ephemeral })
+                    new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
                 };
+
                 assistantMessage = new Message
                 {
                     Role = RoleType.Assistant,
@@ -67,9 +84,9 @@ namespace duetGPT.Components.Pages
                 chatMessages.Clear();
                 formattedMessages.Clear();
                 UpdateTokensAsync(0);
-                 UpdateCostAsync(0);
+                UpdateCostAsync(0);
                 SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
-                 CreateNewThread(); // Start a new thread
+                CreateNewThread(); // Start a new thread
                 Logger.LogInformation("Thread cleared and new thread created");
             }
             catch (Exception ex)
@@ -79,14 +96,14 @@ namespace duetGPT.Components.Pages
             }
         }
 
-        private void  AssociateDocumentsWithThread()
+        private void AssociateDocumentsWithThread()
         {
             try
             {
                 if (currentThread != null && SelectedFiles.Any())
                 {
                     Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
-                    var selectedDocuments =  DbContext.Documents
+                    var selectedDocuments = DbContext.Documents
                         .Where(d => SelectedFiles.Contains(d.Id))
                         .ToList();
 
@@ -105,11 +122,9 @@ namespace duetGPT.Components.Pages
 
                     currentThread.ThreadDocuments.AddRange(newThreadDocuments);
 
-                    //await DbContext.SaveChangesAsync();
                     DbContext.SaveChanges();
                     Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
                 }
-
             }
             catch (DbUpdateException ex)
             {
