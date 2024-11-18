@@ -68,15 +68,29 @@ namespace duetGPT.Components.Pages
             try
             {
                 Logger.LogInformation("Initializing Claude component");
-                ModelValue = _models.FirstOrDefault();
-                await LoadAvailableFiles();
-                await LoadPrompts();
-                CreateNewThread();
+                //ModelValue = _models.FirstOrDefault();
+                //await LoadAvailableFiles();
+                //await LoadPrompts();
+                //await CreateNewThread();  // Changed to await the async call
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error during component initialization");
                 throw;
+            }
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            base.OnAfterRender(firstRender);
+            if (firstRender)
+            {
+                Logger.LogInformation("Claude component rendered");
+                ModelValue = _models.FirstOrDefault();
+                await LoadAvailableFiles();
+                await LoadPrompts();
+                await CreateNewThread();  // Changed to await the async call
+
             }
         }
 
@@ -100,7 +114,7 @@ namespace duetGPT.Components.Pages
             try
             {
                 Logger.LogInformation("Loading available files");
-                var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 var user = authState.User;
                 var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                 AvailableFiles = await DbContext.Documents.ToListAsync();

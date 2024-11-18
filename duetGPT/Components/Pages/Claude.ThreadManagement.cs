@@ -7,11 +7,11 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-        private async void CreateNewThread()
+        private async Task CreateNewThread()
         {
             try
             {
-                var authState = AuthenticationStateProvider.GetAuthenticationStateAsync().Result;
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 var user = authState.User;
                 var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
@@ -55,7 +55,7 @@ namespace duetGPT.Components.Pages
                     };
 
                     DbContext.Threads.Add(currentThread);
-                    DbContext.SaveChanges();
+                    await DbContext.SaveChangesAsync();
                     Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
                 }
                 else
@@ -86,7 +86,7 @@ namespace duetGPT.Components.Pages
                 UpdateTokensAsync(0);
                 UpdateCostAsync(0);
                 SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
-                CreateNewThread(); // Start a new thread
+                await CreateNewThread(); // Start a new thread
                 Logger.LogInformation("Thread cleared and new thread created");
             }
             catch (Exception ex)
@@ -170,7 +170,7 @@ namespace duetGPT.Components.Pages
                     plainText = ExtractTextFromDoc(document.Content);
                 }
                 else if (document.ContentType == "text/plain" || document.ContentType == "application/octet-stream" ||
-             document.ContentType == "application/json" || document.ContentType == "text/xml")
+             document.ContentType == "text/json" || document.ContentType == "text/xml")
                 {
                     plainText = System.Text.Encoding.UTF8.GetString(document.Content);
                 }
