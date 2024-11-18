@@ -11,35 +11,37 @@
 
 <h3>Messages</h3>
 
-<DxGrid Data="@GridDataSource"
-        ShowFilterRow="true"
-        ShowPager="true"
-        ShowGroupPanel="true"
-        PageSize="20"
-        
-        KeyFieldName="Id">
-
-    <Columns>
-        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px"  />
-        <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
-        <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="1" >
-            <CellDisplayTemplate>
-                @{
-                    var message = (context.DataItem as DuetMessage);
-                    @(message?.Thread?.Title ?? "")
-                }
-            </CellDisplayTemplate>
-        </DxGridDataColumn> 
-        <DxGridDataColumn FieldName="Content" Caption="Content" Width="300px" />
-        <DxGridDataColumn FieldName="Created" Caption="Created" GroupIndex="0" Width="150px" DisplayFormat="g" />
-        <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
-        <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
-    </Columns>
-</DxGrid>
+@if (ErrorMessage != null)
+{
+    <div class="alert alert-danger">@ErrorMessage</div>
+}
+else if (GridDataSource == null)
+{
+    <div>Loading...</div>
+}
+else if (!GridDataSource.Any())
+{
+    <div class="alert alert-info">No messages found. Try starting a new conversation.</div>
+}
+else
+{
+    <div class="mb-3">Found @GridDataSource.Count messages</div>
+    <DxGrid Data="@GridDataSource" ShowFilterRow="true" ShowPager="true" ShowGroupPanel="true" PageSize="20" KeyFieldName="Id">
+        <Columns>
+            <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
+            <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
+            <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="1" />
+            <DxGridDataColumn FieldName="Content" Caption="Content" Width="300px" />
+            <DxGridDataColumn FieldName="Created" Caption="Created" GroupIndex="0" Width="150px" DisplayFormat="g" />
+            <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
+            <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
+        </Columns>
+    </DxGrid>
+}
 
 @code {
     private List<DuetMessage> GridDataSource { get; set; }
-    bool PopupVisible { get; set; } = false;
+    private string ErrorMessage { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -49,39 +51,27 @@
             var user = authState.User;
             var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            GridDataSource = await Context.Set<DuetMessage>()
-                .Include(m => m.Thread)
-                .Where(m => m.Thread.UserId == userId)
-                //.OrderByDescending(m => m.Thread.StartTime)
-                .Select(m => new DuetMessage
-                    {
-                        Id = m.Id,
-                        Role = m.Role,
-                        Thread = new DuetThread { Title = m.Thread.Title ?? m.Thread.Id.ToString() },
-                        Content = m.Content,
-                        Created = m.Created,
-                        TokenCount = m.TokenCount,
-                        MessageCost = m.MessageCost
-                    })
-                .ToListAsync();
-
-            void Grid_CustomSort(GridCustomSortEventArgs e)
+            if (string.IsNullOrEmpty(userId))
             {
-                if (e.FieldName == "Thread.Title")
-                {
-
-                        var date1 = (DateTime)e.GetRow1Value("Created");
-                        var date2 = (DateTime)e.GetRow2Value("Created");
-                        e.Result = date2.CompareTo(date1);
-                    e.Handled = true;
-                }
+                ErrorMessage = "User ID not found";
+                return;
             }
 
-            Console.WriteLine($"Fetched {GridDataSource.Count} messages for user {userId}.");
+            GridDataSource = await Context.Messages
+                .Include(m => m.Thread)
+                .Where(m => m.Thread.UserId == userId)
+                .OrderByDescending(m => m.Created)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var message in GridDataSource)
+            {
+                message.Created = message.Created.ToLocalTime();
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error fetching messages: {ex.Message}");
+            ErrorMessage = $"Error loading messages: {ex.Message}";
         }
     }
 }

@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace duetGPT.Data
 {
+  [Table("DuetMessage")]
   public class DuetMessage
   {
     [Key]
