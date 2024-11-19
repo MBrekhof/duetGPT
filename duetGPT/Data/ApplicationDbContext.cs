@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 
 namespace duetGPT.Data
 {
@@ -17,6 +16,8 @@ namespace duetGPT.Data
         public DbSet<DuetMessage> Messages { get; set; }
         public DbSet<ThreadDocument> ThreadDocuments { get; set; }
         public DbSet<Prompt> Prompts { get; set; }
+        public DbSet<Knowledge> Knowledge { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -48,11 +49,13 @@ namespace duetGPT.Data
                 // Add index for UserId since we filter by it
                 entity.HasIndex(e => e.UserId);
             });
+            builder.HasPostgresExtension("vector");
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.EnableSensitiveDataLogging(); // Add this to help with debugging
+            optionsBuilder.UseNpgsql( o => o.UseVector() );
         }
     }
 }
