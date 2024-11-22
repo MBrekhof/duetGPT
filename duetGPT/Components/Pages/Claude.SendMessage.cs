@@ -3,6 +3,7 @@ using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using Markdig;
 using duetGPT.Data;
+using duetGPT.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace duetGPT.Components.Pages
@@ -45,7 +46,7 @@ namespace duetGPT.Components.Pages
                     string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
 
                     // Get selected prompt content if available
-                    if (!string.IsNullOrEmpty(SelectedPrompt) )
+                    if (!string.IsNullOrEmpty(SelectedPrompt))
                     {
                         var selectedPromptContent = await DbContext.Set<Prompt>()
                             .Where(p => p.Name == SelectedPrompt)
@@ -129,10 +130,12 @@ namespace duetGPT.Components.Pages
             catch (HttpRequestException ex)
             {
                 Logger.LogError(ex, "Network error while communicating with Anthropic API");
+                ErrorService.ShowError("Error communicating with AI service. Please check your network connection and try again.");
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error processing message");
+                ErrorService.ShowError("An error occurred while processing your message. Please try again.");
             }
             finally
             {

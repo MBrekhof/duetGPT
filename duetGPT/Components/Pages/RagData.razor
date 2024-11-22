@@ -21,7 +21,17 @@
         KeyFieldName="ragdataid">
     <Columns>
         <DxGridDataColumn FieldName="ragdataid" Caption="ID" Width="80px" />
-        <DxGridDataColumn FieldName="ragcontent" Caption="Content" Width="400px" />
+        <DxGridDataColumn FieldName="ragcontent" Caption="Content" Width="800px">
+            <CellDisplayTemplate>
+                @{
+                    var content = (context.DataItem as Knowledge)?.ragcontent ?? "";
+                    var truncatedContent = content.Length > 100 ? content.Substring(0, 100) + "..." : content;
+                    <div style="cursor: pointer;" @onclick="@(() => ShowContentPopup(content))">
+                        @truncatedContent
+                    </div>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
         <DxGridDataColumn FieldName="tokens" Caption="Tokens" Width="100px" />
         <DxGridDataColumn Width="120px" Caption="Actions">
             <CellDisplayTemplate>
@@ -58,9 +68,22 @@
     </Content>
 </DxPopup>
 
+<DxPopup @bind-Visible="@ContentPopupVisible" HeaderText="Full Content" Width="800px">
+    <Content>
+        <div style="max-height: 500px; overflow-y: auto;">
+            <pre style="white-space: pre-wrap; word-wrap: break-word;">@SelectedContent</pre>
+        </div>
+        <div class="mt-3">
+            <DxButton Text="Close" Click="@(() => ContentPopupVisible = false)" RenderStyle="ButtonRenderStyle.Secondary" />
+        </div>
+    </Content>
+</DxPopup>
+
 @code {
     private List<Knowledge> GridDataSource { get; set; } = new();
     private bool PopupVisible { get; set; }
+    private bool ContentPopupVisible { get; set; }
+    private string SelectedContent { get; set; } = "";
     private string PopupTitle => KnowledgeData?.ragdataid == 0 ? "New RAG Data" : "Edit Knowledge Data";
     private Knowledge KnowledgeData { get; set; } = new();
     
@@ -79,6 +102,12 @@
         {
             Console.WriteLine($"Error fetching RAG data: {ex.Message}");
         }
+    }
+
+    private void ShowContentPopup(string content)
+    {
+        SelectedContent = content;
+        ContentPopupVisible = true;
     }
 
     private void ShowEditPopup(Knowledge? knowLedge)

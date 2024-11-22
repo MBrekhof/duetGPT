@@ -9,7 +9,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
 
-<h3>Messages</h3>
+<h3>Message Threads</h3>
 
 @if (ErrorMessage != null)
 {
@@ -21,27 +21,63 @@ else if (GridDataSource == null)
 }
 else if (!GridDataSource.Any())
 {
-    <div class="alert alert-info">No messages found. Try starting a new conversation.</div>
+    <div class="alert alert-info">No threads found. Try starting a new conversation.</div>
 }
 else
 {
-    <div class="mb-3">Found @GridDataSource.Count messages</div>
-    <DxGrid Data="@GridDataSource" ShowFilterRow="true" ShowPager="true" ShowGroupPanel="true" PageSize="20" KeyFieldName="Id">
+    <div class="mb-3">Found @GridDataSource.Count threads</div>
+    <DxGrid Data="@GridDataSource" ShowFilterRow="true" ShowPager="true" PageSize="20" KeyFieldName="Id">
         <Columns>
             <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
-            <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
-            <DxGridDataColumn FieldName="Thread.Title" Caption="Thread" GroupIndex="1" />
-            <DxGridDataColumn FieldName="Content" Caption="Content" Width="300px" />
-            <DxGridDataColumn FieldName="Created" Caption="Created" GroupIndex="0" Width="150px" DisplayFormat="g" />
-            <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
-            <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
+            <DxGridDataColumn FieldName="Title" Caption="Thread" Width="300px">
+                <CellDisplayTemplate>
+                    @{
+                        var thread = (context.DataItem as DuetThread);
+                        <div style="cursor: pointer;" @onclick="@(() => ShowThreadMessages(thread))">
+                            @thread.Title
+                        </div>
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
+            <DxGridDataColumn FieldName="StartTime" Caption="Created" Width="150px" DisplayFormat="g" />
+            <DxGridDataColumn FieldName="TotalTokens" Caption="Tokens" Width="100px" />
+            <DxGridDataColumn FieldName="Cost" Caption="Cost" Width="100px" DisplayFormat="C" />
         </Columns>
     </DxGrid>
 }
 
+<DxPopup @bind-Visible="PopupVisible" HeaderText="Thread Messages" Width="800px">
+    <Content>
+        <div style="max-height: 500px; overflow-y: auto;">
+            @if (ThreadMessages != null && ThreadMessages.Any())
+            {
+                <DxGrid Data="@ThreadMessages" ShowPager="true" PageSize="10" KeyFieldName="Id">
+                    <Columns>
+                        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
+                        <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
+                        <DxGridDataColumn FieldName="Content" Caption="Content" Width="400px" />
+                        <DxGridDataColumn FieldName="Created" Caption="Created" Width="150px" DisplayFormat="g" />
+                        <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
+                        <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
+                    </Columns>
+                </DxGrid>
+            }
+            else
+            {
+                <div class="alert alert-info">No messages found in this thread.</div>
+            }
+        </div>
+        <div class="mt-3">
+            <DxButton Text="Close" Click="@(() => PopupVisible = false)" RenderStyle="ButtonRenderStyle.Secondary" />
+        </div>
+    </Content>
+</DxPopup>
+
 @code {
-    private List<DuetMessage> GridDataSource { get; set; }
+    private List<DuetThread> GridDataSource { get; set; }
+    private List<DuetMessage> ThreadMessages { get; set; }
     private string ErrorMessage { get; set; }
+    private bool PopupVisible { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -57,21 +93,43 @@ else
                 return;
             }
 
-            GridDataSource = await Context.Messages
-                .Include(m => m.Thread)
-                .Where(m => m.Thread.UserId == userId)
-                .OrderByDescending(m => m.Created)
+            GridDataSource = await Context.Threads
+                .Where(t => t.UserId == userId)
+                .OrderByDescending(t => t.StartTime)
                 .AsNoTracking()
                 .ToListAsync();
 
-            foreach (var message in GridDataSource)
+            foreach (var thread in GridDataSource)
             {
-                message.Created = message.Created.ToLocalTime();
+                thread.StartTime = thread.StartTime.ToLocalTime();
             }
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Error loading messages: {ex.Message}";
+            ErrorMessage = $"Error loading threads: {ex.Message}";
+        }
+    }
+
+    private async Task ShowThreadMessages(DuetThread thread)
+    {
+        try
+        {
+            ThreadMessages = await Context.Messages
+                .Where(m => m.ThreadId == thread.Id)
+                .OrderByDescending(m => m.Id)
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var message in ThreadMessages)
+            {
+                message.Created = message.Created.ToLocalTime();
+            }
+
+            PopupVisible = true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error loading thread messages: {ex.Message}";
         }
     }
 }

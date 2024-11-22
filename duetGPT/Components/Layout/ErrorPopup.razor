@@ -1,0 +1,39 @@
+@using DevExpress.Blazor
+@using duetGPT.Services
+@inject ErrorPopupService ErrorService
+@implements IDisposable
+
+<DxPopup 
+    @bind-Visible="@IsVisible"
+    HeaderText="Error"
+    CloseOnEscape="true"
+    CloseOnOutsideClick="true">
+    <Content>
+        <p class="text-danger">@ErrorMessage</p>
+    </Content>
+    <FooterTemplate>
+        <DxButton Text="Close" Click="@(() => IsVisible = false)" />
+    </FooterTemplate>
+</DxPopup>
+
+@code {
+    private bool IsVisible { get; set; }
+    private string ErrorMessage { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ErrorService.OnError += ShowError;
+    }
+
+    private void ShowError(string message)
+    {
+        ErrorMessage = message;
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        ErrorService.OnError -= ShowError;
+    }
+}

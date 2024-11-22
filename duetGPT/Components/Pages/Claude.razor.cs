@@ -1,4 +1,3 @@
-using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using duetGPT.Data;
 using duetGPT.Services;
@@ -19,6 +18,7 @@ namespace duetGPT.Components.Pages
         [Inject] private AnthropicService AnthropicService { get; set; }
         [Inject] private ApplicationDbContext DbContext { get; set; }
         [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+        [Inject] private ErrorPopupService ErrorService { get; set; }
 
         string textInput = "";
         List<Message> chatMessages = new();

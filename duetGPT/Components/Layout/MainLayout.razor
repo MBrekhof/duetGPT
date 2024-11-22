@@ -19,19 +19,14 @@
             </DxGridLayoutItem>
             <DxGridLayoutItem Area="content" CssClass="content px-4">
                 <Template>
-                    @* @if(!string.IsNullOrEmpty(NavigationManager.ToBaseRelativePath(NavigationManager.Uri))) { *@
-                    @*     <div class="py-4"> *@
-                    @*         <NavLink href="/" class="button-link "> *@
-                    @*             <DxButton RenderStyle="@ButtonRenderStyle.Dark" Text="Back to Home" RenderStyleMode="@ButtonRenderStyleMode.Text" CssClass="back-button" IconCssClass="icon-back"></DxButton> *@
-                    @*         </NavLink> *@
-                    @*     </div> *@
-                    @* } *@
                     @Body
                 </Template>
             </DxGridLayoutItem>
         </Items>
     </DxGridLayout>
 </div>
+
+<ErrorPopup />
 
 @code {
 }

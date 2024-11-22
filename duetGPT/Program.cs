@@ -22,7 +22,8 @@ builder.Host.UseSerilog();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-builder.Services.AddDevExpressBlazor(options => {
+builder.Services.AddDevExpressBlazor(options =>
+{
     options.BootstrapVersion = DevExpress.Blazor.BootstrapVersion.v5;
     options.SizeMode = DevExpress.Blazor.SizeMode.Medium;
 });
@@ -59,6 +60,9 @@ builder.Services.AddAuthorization();
 
 // Add AnthropicService
 builder.Services.AddSingleton<AnthropicService>();
+
+// Add ErrorPopupService
+builder.Services.AddScoped<ErrorPopupService>();
 
 // Add a hosted service to check Anthropic client status
 //builder.Services.AddHostedService<AnthropicHealthCheckService>();

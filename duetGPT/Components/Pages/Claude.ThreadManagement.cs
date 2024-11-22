@@ -51,7 +51,8 @@ namespace duetGPT.Components.Pages
                         UserId = userId,
                         StartTime = DateTime.UtcNow,
                         TotalTokens = 0,
-                        Cost = 0
+                        Cost = 0,
+                        Title = "New Thread: "+ DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
                     };
 
                     DbContext.Threads.Add(currentThread);
