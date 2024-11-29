@@ -10,10 +10,18 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
+       
         async Task SendClick()
         {
             try
             {
+                // Create thread if it doesn't exist yet
+                if (currentThread == null)
+                {
+                    await CreateNewThread();
+                    newThread = true;
+                }
+
                 var client = AnthropicService.GetAnthropicClient();
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
@@ -33,7 +41,6 @@ namespace duetGPT.Components.Pages
                     MessageCost = 0 // Will be updated when we get response
                 };
                 DbContext.Add(duetUserMessage);
-                //await DbContext.SaveChangesAsync();
                 DbContext.SaveChanges();
 
                 userMessages.Add(userMessage);
@@ -101,9 +108,11 @@ namespace duetGPT.Components.Pages
                 DbContext.SaveChanges();
 
                 // Generate thread title after first message exchange if not already set
-                if (string.IsNullOrEmpty(currentThread.Title))
+                //if (string.IsNullOrEmpty(currentThread.Title))
+                if (newThread)
                 {
                     await GenerateThreadTitle(client, modelChosen, textInput, res.Content[0].ToString());
+                    newThread = false;
                 }
 
                 // Update Tokens and Cost

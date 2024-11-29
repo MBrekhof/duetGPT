@@ -27,6 +27,7 @@ namespace duetGPT.Components.Pages
         Message assistantMessage = new();
         private List<String> formattedMessages = new();
         bool running;
+        bool newThread = false;
 
         private DuetThread currentThread;
 
@@ -65,19 +66,6 @@ namespace duetGPT.Components.Pages
 
         protected override async Task OnInitializedAsync()
         {
-            try
-            {
-                Logger.LogInformation("Initializing Claude component");
-                //ModelValue = _models.FirstOrDefault();
-                //await LoadAvailableFiles();
-                //await LoadPrompts();
-                //await CreateNewThread();  // Changed to await the async call
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error during component initialization");
-                throw;
-            }
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -89,8 +77,7 @@ namespace duetGPT.Components.Pages
                 ModelValue = _models.FirstOrDefault();
                 await LoadAvailableFiles();
                 await LoadPrompts();
-                await CreateNewThread();  // Changed to await the async call
-
+                StateHasChanged();
             }
         }
 
