@@ -1,17 +1,133 @@
-@page "/ragdata"
+@page "/knowledge"
 @using duetGPT.Data
 @using DevExpress.Blazor
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
+@using duetGPT.Services
 @rendermode InteractiveServer
 @inject ApplicationDbContext Context
+@inject OpenAIService OpenAIService
 @attribute [Authorize]
 
-<h3>RAG Data Management</h3>
+@code {
+    private List<Knowledge> GridDataSource { get; set; } = new();
+    private bool PopupVisible { get; set; }
+    private bool ContentPopupVisible { get; set; }
+    private string SelectedContent { get; set; } = "";
+    private string PopupTitle => KnowledgeData?.ragdataid == 0 ? "New Knowledge" : "Edit Knowledge";
+    private Knowledge KnowledgeData { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            GridDataSource = await Context.Set<Knowledge>().ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching knowledge data: {ex.Message}");
+        }
+    }
+
+    private void ShowContentPopup(string content)
+    {
+        SelectedContent = content;
+        ContentPopupVisible = true;
+    }
+
+    private void ShowEditPopup(Knowledge? knowledge)
+    {
+        KnowledgeData = knowledge != null ? new Knowledge
+        {
+            ragdataid = knowledge.ragdataid,
+            ragcontent = knowledge.ragcontent,
+            tokens = knowledge.tokens,
+            vectordatastring = knowledge.vectordatastring
+        } : new Knowledge();
+        PopupVisible = true;
+    }
+
+    private async Task SaveKnowledgeData()
+    {
+        try
+        {
+            if (KnowledgeData.ragdataid == 0)
+            {
+                Context.Add(KnowledgeData);
+            }
+            else
+            {
+                var existingItem = await Context.Set<Knowledge>().FindAsync(KnowledgeData.ragdataid);
+                if (existingItem != null)
+                {
+                    existingItem.ragcontent = KnowledgeData.ragcontent;
+                    existingItem.tokens = KnowledgeData.tokens;
+                    // Explicitly not updating vectordatastring as per requirements
+                    Context.Update(existingItem);
+                }
+            }
+            await Context.SaveChangesAsync();
+            await LoadData();
+            PopupVisible = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving knowledge data: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteKnowledge(int knowledgeId)
+    {
+        try
+        {
+            var knowledge = await Context.Set<Knowledge>().FindAsync(knowledgeId);
+            if (knowledge != null)
+            {
+                Context.Remove(knowledge);
+                await Context.SaveChangesAsync();
+                await LoadData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting knowledge: {ex.Message}");
+        }
+    }
+
+    private async Task EmbedKnowledge(Knowledge knowledge)
+    {
+        try
+        {
+            if (knowledge != null && !string.IsNullOrEmpty(knowledge.ragcontent))
+            {
+                var vector = await OpenAIService.GetVectorDataAsync(knowledge.ragcontent);
+                var existingItem = await Context.Set<Knowledge>().FindAsync(knowledge.ragdataid);
+                if (existingItem != null)
+                {
+                    existingItem.vectordatastring = vector;
+                    Context.Update(existingItem);
+                    await Context.SaveChangesAsync();
+                    await LoadData();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error embedding knowledge: {ex.Message}");
+        }
+    }
+}
+
+<h3>Knowledge Management</h3>
 
 <div class="mb-3">
-    <DxButton Text="New RAG Data" IconCssClass="oi oi-plus" Click="@(() => ShowEditPopup(null))" />
+    <DxButton Text="New Knowledge" IconCssClass="oi oi-plus" Click="@(() => ShowEditPopup(null))" />
 </div>
 
 <DxGrid Data="@GridDataSource"
@@ -33,12 +149,25 @@
             </CellDisplayTemplate>
         </DxGridDataColumn>
         <DxGridDataColumn FieldName="tokens" Caption="Tokens" Width="100px" />
-        <DxGridDataColumn Width="120px" Caption="Actions">
+        <DxGridDataColumn Caption="Embedded" Width="100px">
             <CellDisplayTemplate>
                 @{
-                    var knowLedgeData = (context.DataItem as Knowledge);
-                    <DxButton Text="Edit" IconCssClass="oi oi-pencil" Click="@(() => ShowEditPopup(knowLedgeData))" RenderStyle="ButtonRenderStyle.Secondary" />
-                    <DxButton Text="Delete" IconCssClass="oi oi-trash" Click="@(() => DeleteRagData(knowLedgeData.ragdataid))" RenderStyle="ButtonRenderStyle.Danger" />
+                    var knowledge = (context.DataItem as Knowledge);
+                    var isEmbedded = knowledge?.vectordatastring != null;
+                    <span>@(isEmbedded ? "Yes" : "No")</span>
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn Width="200px" Caption="Actions">
+            <CellDisplayTemplate>
+                @{
+                    var knowledge = (context.DataItem as Knowledge);
+                    if (knowledge != null)
+                    {
+                        <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Edit" })" IconCssClass="oi oi-pencil" Click="@(() => ShowEditPopup(knowledge))" RenderStyle="ButtonRenderStyle.Secondary" />
+                        <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Delete" })" IconCssClass="oi oi-trash" Click="@(() => DeleteKnowledge(knowledge.ragdataid))" RenderStyle="ButtonRenderStyle.Danger" />
+                        <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Embed" })" IconCssClass="oi oi-code" Click="@(() => EmbedKnowledge(knowledge))" RenderStyle="ButtonRenderStyle.Primary" />
+                    }
                 }
             </CellDisplayTemplate>
         </DxGridDataColumn>
@@ -78,94 +207,3 @@
         </div>
     </Content>
 </DxPopup>
-
-@code {
-    private List<Knowledge> GridDataSource { get; set; } = new();
-    private bool PopupVisible { get; set; }
-    private bool ContentPopupVisible { get; set; }
-    private string SelectedContent { get; set; } = "";
-    private string PopupTitle => KnowledgeData?.ragdataid == 0 ? "New RAG Data" : "Edit Knowledge Data";
-    private Knowledge KnowledgeData { get; set; } = new();
-    
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        try
-        {
-            GridDataSource = await Context.Set<Knowledge>().ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching RAG data: {ex.Message}");
-        }
-    }
-
-    private void ShowContentPopup(string content)
-    {
-        SelectedContent = content;
-        ContentPopupVisible = true;
-    }
-
-    private void ShowEditPopup(Knowledge? knowLedge)
-    {
-        KnowledgeData = knowLedge != null ? new Knowledge
-        {
-            ragdataid = knowLedge.ragdataid,
-            ragcontent = knowLedge.ragcontent,
-            tokens = knowLedge.tokens,
-            vectordatastring = knowLedge.vectordatastring
-        } : new Knowledge();
-        PopupVisible = true;
-    }
-
-    private async Task SaveKnowledgeData()
-    {
-        try
-        {
-            if (KnowledgeData.ragdataid == 0)
-            {
-                Context.Add(KnowledgeData);
-            }
-            else
-            {
-                var existingItem = await Context.Set<Knowledge>().FindAsync(KnowledgeData.ragdataid);
-                if (existingItem != null)
-                {
-                    existingItem.ragcontent = KnowledgeData.ragcontent;
-                    existingItem.tokens = KnowledgeData.tokens;
-                    // Explicitly not updating vectordatastring as per requirements
-                    Context.Update(existingItem);
-                }
-            }
-            await Context.SaveChangesAsync();
-            await LoadData();
-            PopupVisible = false;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving RAG data: {ex.Message}");
-        }
-    }
-
-    private async Task DeleteRagData(int ragDataId)
-    {
-        try
-        {
-            var knowLedgeData = await Context.Set<Knowledge>().FindAsync(ragDataId);
-            if (knowLedgeData != null)
-            {
-                Context.Remove(knowLedgeData);
-                await Context.SaveChangesAsync();
-                await LoadData();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error deleting RAG data: {ex.Message}");
-        }
-    }
-}

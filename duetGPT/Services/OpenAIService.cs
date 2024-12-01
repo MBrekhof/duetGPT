@@ -28,7 +28,7 @@ namespace duetGPT.Services
             return _openAIClient;
         }
 
-        public async Task<Vector> GetVectorDataStringAsync(string content)
+        public async Task<Vector> GetVectorDataAsync(string content)
         {
             var model = await _openAIClient.ModelsEndpoint.GetModelDetailsAsync(_embedding);
 
