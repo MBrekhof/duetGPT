@@ -5,12 +5,43 @@ using Markdig;
 using duetGPT.Data;
 using duetGPT.Services;
 using Microsoft.EntityFrameworkCore;
+using Pgvector;
+using Pgvector.EntityFrameworkCore;
+using Microsoft.AspNetCore.Components;
 
 namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-       
+        [Inject]
+        private OpenAIService OpenAIService { get; set; } = default!;
+
+        private async Task<List<string>> GetRelevantKnowledgeAsync(string userQuestion)
+        {
+            try
+            {
+                // Get embedding for user question
+                var questionEmbedding = await OpenAIService.GetVectorDataAsync(userQuestion);
+
+                // Get top 3 most relevant Knowledge records using cosine distance
+                var relevantKnowledge = await DbContext.Set<Knowledge>()
+                    .FromSqlRaw($@"
+                        SELECT * FROM ragdata 
+                        WHERE vectordatastring IS NOT NULL 
+                        ORDER BY vectordatastring <-> '{questionEmbedding}'::vector 
+                        LIMIT 3")
+                    .Select(k => k.ragcontent)
+                    .ToListAsync();
+
+                return relevantKnowledge ?? new List<string>();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting relevant knowledge");
+                return new List<string>();
+            }
+        }
+
         async Task SendClick()
         {
             try
@@ -47,6 +78,12 @@ namespace duetGPT.Components.Pages
                 chatMessages = userMessages;
                 AssociateDocumentsWithThread();
                 var extrainfo = await GetThreadDocumentsContentAsync();
+
+                // If no local documents, get relevant knowledge
+                if (extrainfo == null || !extrainfo.Any())
+                {
+                    extrainfo = await GetRelevantKnowledgeAsync(textInput);
+                }
 
                 if (extrainfo != null && extrainfo.Any())
                 {
