@@ -60,6 +60,8 @@ builder.Services.AddAuthorization();
 
 // Add AnthropicService
 builder.Services.AddSingleton<AnthropicService>();
+// Add OpenAIService
+builder.Services.AddSingleton<OpenAIService>();
 
 // Add ErrorPopupService
 builder.Services.AddScoped<ErrorPopupService>();
