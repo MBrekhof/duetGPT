@@ -63,6 +63,9 @@ builder.Services.AddSingleton<AnthropicService>();
 // Add OpenAIService
 builder.Services.AddSingleton<OpenAIService>();
 
+// Add KnowledgeService
+builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
+
 // Add ErrorPopupService
 builder.Services.AddScoped<ErrorPopupService>();
 

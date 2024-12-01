@@ -16,34 +16,15 @@ namespace duetGPT.Components.Pages
         [Inject]
         private OpenAIService OpenAIService { get; set; } = default!;
 
-        private async Task<List<string>> GetRelevantKnowledgeAsync(string userQuestion)
-        {
-            try
-            {
-                // Get embedding for user question
-                var questionEmbedding = await OpenAIService.GetVectorDataAsync(userQuestion);
-
-                // Get top 3 most relevant Knowledge records using cosine distance
-                var relevantKnowledge = await DbContext.Set<Knowledge>()
-                    .FromSqlRaw($@"
-                        SELECT * FROM ragdata 
-                        WHERE vectordatastring IS NOT NULL 
-                        ORDER BY vectordatastring <-> '{questionEmbedding}'::vector 
-                        LIMIT 3")
-                    .Select(k => k.ragcontent)
-                    .ToListAsync();
-
-                return relevantKnowledge ?? new List<string>();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error getting relevant knowledge");
-                return new List<string>();
-            }
-        }
+        [Inject]
+        private IKnowledgeService KnowledgeService { get; set; } = default!;
 
         async Task SendClick()
         {
+            if (string.IsNullOrWhiteSpace(textInput))
+            {
+                return;
+            }
             try
             {
                 // Create thread if it doesn't exist yet
@@ -77,15 +58,21 @@ namespace duetGPT.Components.Pages
                 userMessages.Add(userMessage);
                 chatMessages = userMessages;
                 AssociateDocumentsWithThread();
-                var extrainfo = await GetThreadDocumentsContentAsync();
+                var threadDocs = await GetThreadDocumentsContentAsync();
 
                 // If no local documents, get relevant knowledge
-                if (extrainfo == null || !extrainfo.Any())
+                List<string> knowledgeContent;
+                if (threadDocs == null || !threadDocs.Any())
                 {
-                    extrainfo = await GetRelevantKnowledgeAsync(textInput);
+                    var knowledgeResults = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
+                    knowledgeContent = knowledgeResults.Select(k => k.Content).ToList();
+                }
+                else
+                {
+                    knowledgeContent = threadDocs;
                 }
 
-                if (extrainfo != null && extrainfo.Any())
+                if (knowledgeContent != null && knowledgeContent.Any())
                 {
                     string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
 
@@ -107,7 +94,7 @@ namespace duetGPT.Components.Pages
                     {
                         new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
                     };
-                    systemMessages.Add(new SystemMessage(string.Join("\n", extrainfo), new CacheControl() { Type = CacheControlType.ephemeral }));
+                    systemMessages.Add(new SystemMessage(string.Join("\n", knowledgeContent), new CacheControl() { Type = CacheControlType.ephemeral }));
                 }
 
                 var parameters = new MessageParameters()
@@ -145,7 +132,6 @@ namespace duetGPT.Components.Pages
                 DbContext.SaveChanges();
 
                 // Generate thread title after first message exchange if not already set
-                //if (string.IsNullOrEmpty(currentThread.Title))
                 if (newThread)
                 {
                     await GenerateThreadTitle(client, modelChosen, textInput, res.Content[0].ToString());

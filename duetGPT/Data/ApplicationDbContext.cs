@@ -17,7 +17,8 @@ namespace duetGPT.Data
         public DbSet<ThreadDocument> ThreadDocuments { get; set; }
         public DbSet<Prompt> Prompts { get; set; }
         public DbSet<Knowledge> Knowledge { get; set; }
-
+        public DbSet<KnowledgeResult> KnowledgeResults { get; set; }
+        public DbSet<KnowledgeQueryResult> KnowledgeQueryResults { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -49,13 +50,18 @@ namespace duetGPT.Data
                 // Add index for UserId since we filter by it
                 entity.HasIndex(e => e.UserId);
             });
+
+            // Configure KnowledgeResult and KnowledgeQueryResult as non-persisted entities
+            builder.Entity<KnowledgeResult>().HasNoKey();
+            builder.Entity<KnowledgeQueryResult>().HasNoKey();
+
             builder.HasPostgresExtension("vector");
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             optionsBuilder.EnableSensitiveDataLogging(); // Add this to help with debugging
-            optionsBuilder.UseNpgsql( o => o.UseVector() );
+            optionsBuilder.UseNpgsql(o => o.UseVector());
         }
     }
 }

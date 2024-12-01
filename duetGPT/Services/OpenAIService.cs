@@ -1,6 +1,4 @@
-﻿
-
-using DevExpress.Pdf.Native.BouncyCastle.Asn1.X509;
+﻿using DevExpress.Pdf.Native.BouncyCastle.Asn1.X509;
 using DevExpress.RichEdit.Export;
 using OpenAI;
 using Pgvector;
@@ -33,7 +31,10 @@ namespace duetGPT.Services
             var model = await _openAIClient.ModelsEndpoint.GetModelDetailsAsync(_embedding);
 
             var embeddings = await _openAIClient.EmbeddingsEndpoint.CreateEmbeddingAsync(content, model, dimensions: 1536);
-            return (Vector)embeddings.Data[0].Embedding;
+            // Convert doubles to floats
+            var floatArray = embeddings.Data[0].Embedding.Select(d => (float)d).ToArray();
+            var vector = new Vector(floatArray);
+            return vector;
         }
     }
 }
