@@ -15,7 +15,7 @@
     private bool PopupVisible { get; set; }
     private bool ContentPopupVisible { get; set; }
     private string SelectedContent { get; set; } = "";
-    private string PopupTitle => KnowledgeData?.ragdataid == 0 ? "New Knowledge" : "Edit Knowledge";
+    private string PopupTitle => KnowledgeData?.RagDataId == 0 ? "New Knowledge" : "Edit Knowledge";
     private Knowledge KnowledgeData { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
@@ -45,11 +45,13 @@
     {
         KnowledgeData = knowledge != null ? new Knowledge
         {
-            ragdataid = knowledge.ragdataid,
-            ragcontent = knowledge.ragcontent,
-            tokens = knowledge.tokens,
-            vectordatastring = knowledge.vectordatastring
-        } : new Knowledge();
+            RagDataId = knowledge.RagDataId,
+            Title = knowledge.Title,
+            RagContent = knowledge.RagContent,
+            Tokens = knowledge.Tokens,
+            CreationDate = knowledge.CreationDate,
+            VectorDataString = knowledge.VectorDataString
+        } : new Knowledge { CreationDate = DateTime.UtcNow };
         PopupVisible = true;
     }
 
@@ -57,17 +59,18 @@
     {
         try
         {
-            if (KnowledgeData.ragdataid == 0)
+            if (KnowledgeData.RagDataId == 0)
             {
                 Context.Add(KnowledgeData);
             }
             else
             {
-                var existingItem = await Context.Set<Knowledge>().FindAsync(KnowledgeData.ragdataid);
+                var existingItem = await Context.Set<Knowledge>().FindAsync(KnowledgeData.RagDataId);
                 if (existingItem != null)
                 {
-                    existingItem.ragcontent = KnowledgeData.ragcontent;
-                    existingItem.tokens = KnowledgeData.tokens;
+                    existingItem.Title = KnowledgeData.Title;
+                    existingItem.RagContent = KnowledgeData.RagContent;
+                    existingItem.Tokens = KnowledgeData.Tokens;
                     // Explicitly not updating vectordatastring as per requirements
                     Context.Update(existingItem);
                 }
@@ -104,13 +107,13 @@
     {
         try
         {
-            if (knowledge != null && !string.IsNullOrEmpty(knowledge.ragcontent))
+            if (knowledge != null && !string.IsNullOrEmpty(knowledge.RagContent))
             {
-                var vector = await OpenAIService.GetVectorDataAsync(knowledge.ragcontent);
-                var existingItem = await Context.Set<Knowledge>().FindAsync(knowledge.ragdataid);
+                var vector = await OpenAIService.GetVectorDataAsync(knowledge.RagContent);
+                var existingItem = await Context.Set<Knowledge>().FindAsync(knowledge.RagDataId);
                 if (existingItem != null)
                 {
-                    existingItem.vectordatastring = vector;
+                    existingItem.VectorDataString = vector;
                     Context.Update(existingItem);
                     await Context.SaveChangesAsync();
                     await LoadData();
@@ -134,26 +137,24 @@
         ShowFilterRow="true"
         ShowPager="true"
         PageSize="20"
-        KeyFieldName="ragdataid">
+        KeyFieldName="RagDataId">
     <Columns>
-        <DxGridDataColumn FieldName="ragdataid" Caption="ID" Width="80px" />
-        <DxGridDataColumn FieldName="ragcontent" Caption="Content" Width="800px">
+        <DxGridDataColumn FieldName="RagDataId" Caption="ID" Width="80px" />
+        <DxGridDataColumn FieldName="Title" Caption="Title" Width="300px" />
+        <DxGridDataColumn FieldName="CreationDate" Caption="Created" Width="200px">
             <CellDisplayTemplate>
                 @{
-                    var content = (context.DataItem as Knowledge)?.ragcontent ?? "";
-                    var truncatedContent = content.Length > 100 ? content.Substring(0, 100) + "..." : content;
-                    <div style="cursor: pointer;" @onclick="@(() => ShowContentPopup(content))">
-                        @truncatedContent
-                    </div>
+                    var date = (context.DataItem as Knowledge)?.CreationDate;
+                    @(date?.ToString("g") ?? "")
                 }
             </CellDisplayTemplate>
         </DxGridDataColumn>
-        <DxGridDataColumn FieldName="tokens" Caption="Tokens" Width="100px" />
+        <DxGridDataColumn FieldName="Tokens" Caption="Tokens" Width="100px" />
         <DxGridDataColumn Caption="Embedded" Width="100px">
             <CellDisplayTemplate>
                 @{
                     var knowledge = (context.DataItem as Knowledge);
-                    var isEmbedded = knowledge?.vectordatastring != null;
+                    var isEmbedded = knowledge?.VectorDataString != null;
                     <span>@(isEmbedded ? "Yes" : "No")</span>
                 }
             </CellDisplayTemplate>
@@ -165,7 +166,7 @@
                     if (knowledge != null)
                     {
                         <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Edit" })" IconCssClass="oi oi-pencil" Click="@(() => ShowEditPopup(knowledge))" RenderStyle="ButtonRenderStyle.Secondary" />
-                        <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Delete" })" IconCssClass="oi oi-trash" Click="@(() => DeleteKnowledge(knowledge.ragdataid))" RenderStyle="ButtonRenderStyle.Danger" />
+                        <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Delete" })" IconCssClass="oi oi-trash" Click="@(() => DeleteKnowledge(knowledge.RagDataId))" RenderStyle="ButtonRenderStyle.Danger" />
                         <DxButton Attributes="@(new Dictionary<string, object> {  ["title"] = "Embed" })" IconCssClass="oi oi-code" Click="@(() => EmbedKnowledge(knowledge))" RenderStyle="ButtonRenderStyle.Primary" />
                     }
                 }
@@ -178,15 +179,21 @@
     <Content>
         <div class="row mb-3">
             <div class="col">
+                <label class="form-label">Title</label>
+                <DxTextBox @bind-Text="@KnowledgeData.Title" MaxLength="50" />
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col">
                 <label class="form-label">Content</label>
-                 <DxMemo @bind-Text="@KnowledgeData.ragcontent" Rows="5" Width="100%" />
-             </div>
+                <DxMemo @bind-Text="@KnowledgeData.RagContent" Rows="5" Width="100%" />
+            </div>
         </div>
         <div class="row mb-3">
             <div class="col">
                 <label class="form-label">Tokens</label>
-                 <DxSpinEdit @bind-Value="@KnowledgeData.tokens" />
-             </div>
+                <DxSpinEdit @bind-Value="@KnowledgeData.Tokens" />
+            </div>
         </div>
         <div class="row">
             <div class="col">

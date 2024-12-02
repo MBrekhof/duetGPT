@@ -1,4 +1,5 @@
-﻿using Pgvector;
+﻿#nullable enable
+using Pgvector;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -8,13 +9,24 @@ namespace duetGPT.Data
     public class Knowledge
     {
         [Key]
-        public int ragdataid { get; set; }
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Column("ragdataid")]
+        public int RagDataId { get; set; }
 
-        public string? ragcontent { get; set; }
+        [Column("ragcontent")]
+        public string? RagContent { get; set; }
 
-        public int tokens { get; set; }
+        [Column("tokens")]
+        public int Tokens { get; set; }
 
-        [Column(TypeName = "vector(1536)")]
-        public Vector? vectordatastring { get; set; }
+        [Column("vectordatastring", TypeName = "vector(1536)")]
+        public Vector? VectorDataString { get; set; }
+
+        [StringLength(50)]
+        [Column("title")]
+        public string? Title { get; set; }
+
+        [Column("creationdate")]
+        public DateTime? CreationDate { get; set; } = DateTime.UtcNow;
     }
 }
