@@ -4,28 +4,41 @@
 @using duetGPT.Data
 @using duetGPT.Services
 @using Microsoft.EntityFrameworkCore
-@using Microsoft.EntityFrameworkCore.ChangeTracking;
+@using Microsoft.EntityFrameworkCore.ChangeTracking
 @using Microsoft.AspNetCore.Identity
+@using DevExpress.Pdf
+@using DevExpress.XtraRichEdit
+@using System.Text
 @inject ApplicationDbContext DbContext
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ILogger<Files> Logger
 @rendermode InteractiveServer
 @attribute [Authorize] 
 
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
-<DxGrid @ref="Grid" Data="@Documents" ShowFilterRow="true" ShowPager="true" PageSize="10" >
+
+<DxGrid @ref="Grid" 
+        Data="@Documents" 
+        ShowFilterRow="true" 
+        ShowPager="true" 
+        PageSize="10">
     <Columns>
-        <DxGridCommandColumn Width="160px">
+        <DxGridCommandColumn Width="240px">
            <CellDisplayTemplate>
              <div class="grid-cell-align-center">
+               <DxButton Text="Embed"
+                        RenderStyle="ButtonRenderStyle.Primary"
+                        Click="@(() => Embed_Click((DocumentViewModel)context.DataItem))"
+                        CssClass="me-2"/>
                <DxButton Text="Delete"
                         RenderStyle="ButtonRenderStyle.Danger"
                         Click="@(() => Delete_Click((DocumentViewModel)context.DataItem))"/>
              </div>
           </CellDisplayTemplate>
-        </DxGridCommandColumn> />
+        </DxGridCommandColumn>
         <DxGridDataColumn FieldName="FileName" Caption="File Name" />
         <DxGridDataColumn FieldName="FileSize" Caption="File Size (bytes)" />
         <DxGridDataColumn FieldName="UploadedAt" Caption="Upload Date" />
@@ -41,6 +54,76 @@
     private bool isDeleteConfirmationVisible = false;
     private int recordIdToDelete;
     private int counter = 0;
+
+    private string ExtractTextFromPdf(byte[] content)
+    {
+        using (var pdfDocumentProcessor = new PdfDocumentProcessor())
+        using (var stream = new MemoryStream(content))
+        {
+            pdfDocumentProcessor.LoadDocument(stream);
+            var text = new StringBuilder();
+
+            for (int i = 0; i < pdfDocumentProcessor.Document.Pages.Count; i++)
+            {
+                text.Append(pdfDocumentProcessor.GetPageText(i));
+            }
+
+            return text.ToString();
+        }
+    }
+
+    private string ExtractTextFromDocx(byte[] content)
+    {
+        using var richEditDocumentServer = new RichEditDocumentServer();
+        richEditDocumentServer.LoadDocument(content, DocumentFormat.OpenXml);
+        return richEditDocumentServer.Text;
+    }
+
+    private string ExtractTextFromDoc(byte[] content)
+    {
+        using var richEditDocumentServer = new RichEditDocumentServer();
+        richEditDocumentServer.LoadDocument(content, DocumentFormat.Doc);
+        return richEditDocumentServer.Text;
+    }
+
+    private async Task Embed_Click(DocumentViewModel dataItem)
+    {
+        try
+        {
+            var document = await DbContext.Documents.FindAsync(dataItem.Id);
+            if (document != null)
+            {
+                string plainText = string.Empty;
+
+                if (document.ContentType == "application/pdf")
+                {
+                    plainText = ExtractTextFromPdf(document.Content);
+                }
+                else if (document.FileName.EndsWith(".docx", StringComparison.OrdinalIgnoreCase))
+                {
+                    plainText = ExtractTextFromDocx(document.Content);
+                }
+                else if (document.ContentType == "application/msword")
+                {
+                    plainText = ExtractTextFromDoc(document.Content);
+                }
+                else if (document.ContentType == "text/plain" || document.ContentType == "application/octet-stream" ||
+                         document.ContentType == "text/json" || document.ContentType == "text/xml")
+                {
+                    plainText = Encoding.UTF8.GetString(document.Content);
+                }
+
+                // Store the plainText for later embedding implementation
+                Logger.LogInformation($"Successfully extracted text from document: {document.FileName}");
+                // TODO: Implement embedding logic here
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing document for embedding");
+            throw;
+        }
+    }
 
     async Task Delete_Click(DocumentViewModel dataItem)
     {
