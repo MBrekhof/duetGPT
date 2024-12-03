@@ -71,7 +71,7 @@ namespace duetGPT.Components.Pages
                 {
                     knowledgeContent = threadDocs;
                 }
-
+                
                 if (knowledgeContent != null && knowledgeContent.Any())
                 {
                     string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";

@@ -33,6 +33,7 @@ namespace duetGPT.Services
             var embeddings = await _openAIClient.EmbeddingsEndpoint.CreateEmbeddingAsync(content, model, dimensions: 1536);
             // Convert doubles to floats
             var floatArray = embeddings.Data[0].Embedding.Select(d => (float)d).ToArray();
+            
             var vector = new Vector(floatArray);
             return vector;
         }
