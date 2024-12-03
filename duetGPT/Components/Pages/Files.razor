@@ -27,7 +27,7 @@
         PageSize="10">
     <Columns>
         <DxGridCommandColumn Width="240px">
-           <CellDisplayTemplate>
+           <CellDisplayTemplate Context="context">
              <div class="grid-cell-align-center">
                <DxButton Text="Embed"
                         RenderStyle="ButtonRenderStyle.Primary"
@@ -48,12 +48,90 @@
     </Columns>
 </DxGrid>
 
-@code {
-    IGrid? Grid { get; set; }
+@code 
+{
+    private class DocumentViewModel
+    {
+        public int Id { get; set; }
+        public required string FileName { get; set; }
+        public long FileSize { get; set; }
+        public DateTime UploadedAt { get; set; }
+        public required string ContentType { get; set; }
+        public bool General { get; set; }
+        public string? OwnerName { get; set; }
+    }
+
+    private IGrid? Grid { get; set; }
     private IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
     private bool isDeleteConfirmationVisible = false;
     private int recordIdToDelete;
     private int counter = 0;
+
+    private List<string> SplitArticleIntoChunks(string articleText, int tokenLimit)
+    {
+        // Remove line breaks
+        articleText = articleText.Replace("\r\n", "");
+
+        // Split the article text by markers
+        string markerStart = "<#>";
+        string[] sections = articleText.Split(new[] { markerStart }, StringSplitOptions.None);
+
+        // Initialize a list to hold the chunks
+        List<string> chunks = new List<string>();
+
+        // Initialize a StringBuilder to build each chunk
+        StringBuilder chunk = new StringBuilder();
+
+        // Initialize a counter to keep track of the number of tokens in the current chunk
+        int tokenCount = 0;
+
+        // Iterate over the sections
+        foreach (string section in sections)
+        {
+            if (section.Contains(markerStart))
+            {
+                string markedSection = section.Replace(markerStart, "");
+                string[] tokens = markedSection.Split(' ');
+                if (tokenCount + tokens.Length > tokenLimit)
+                {
+                    chunks.Add(chunk.ToString());
+                    chunk.Clear();
+                    tokenCount = 0;
+                }
+                chunk.Append(markedSection);
+                tokenCount += tokens.Length;
+            }
+            else
+            {
+                string[] sentences = section.Split(new[] { ". " }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                foreach (string sentence in sentences)
+                {
+                    string[] tokens = sentence.Split(' ');
+                    if (tokens.Length < 2) continue;
+                    if (tokenCount + tokens.Length > tokenLimit)
+                    {
+                        chunks.Add(chunk.ToString());
+                        chunk.Clear();
+                        chunk.Append(sentence + ". ");
+                        tokenCount = tokens.Length;
+                    }
+                    else
+                    {
+                        chunk.Append(sentence + ". ");
+                        tokenCount += tokens.Length;
+                    }
+                }
+            }
+        }
+
+        // Add the last chunk to the list, if it's not empty
+        if (chunk.Length > 0)
+        {
+            chunks.Add(chunk.ToString());
+        }
+
+        return chunks;
+    }
 
     private string ExtractTextFromPdf(byte[] content)
     {
@@ -113,9 +191,11 @@
                     plainText = Encoding.UTF8.GetString(document.Content);
                 }
 
-                // Store the plainText for later embedding implementation
-                Logger.LogInformation($"Successfully extracted text from document: {document.FileName}");
-                // TODO: Implement embedding logic here
+                // Split the text into chunks
+                var chunks = SplitArticleIntoChunks(plainText, 500);
+                
+                Logger.LogInformation($"Successfully extracted and split text from document: {document.FileName} into {chunks.Count} chunks");
+                // TODO: Implement embedding logic here with the chunks
             }
         }
         catch (Exception ex)
@@ -125,7 +205,7 @@
         }
     }
 
-    async Task Delete_Click(DocumentViewModel dataItem)
+    private async Task Delete_Click(DocumentViewModel dataItem)
     {
         var x = dataItem;
         var document = await DbContext.Documents.FindAsync(x.Id);
@@ -165,16 +245,5 @@
                     OwnerName = d.Owner?.UserName ?? "Unknown"
                 }).ToList();
         }
-    }
-
-    private class DocumentViewModel
-    {
-        public int Id { get; set; }
-        public required string FileName { get; set; }
-        public long FileSize { get; set; }
-        public DateTime UploadedAt { get; set; }
-        public required string ContentType { get; set; }
-        public bool General { get; set; }
-        public string? OwnerName { get; set; }
     }
 }
