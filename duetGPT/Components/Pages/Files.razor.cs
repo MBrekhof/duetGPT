@@ -217,7 +217,7 @@ public partial class Files : ComponentBase
 
           var knowledge = new Knowledge
           {
-            Title = $"{document.FileName}_{i + 1}",
+            Title = $"#{i + 1}_{document.FileName}".Substring(0,50),
             RagContent = chunk,
             Tokens = wordCount,
             CreationDate = DateTime.UtcNow,
