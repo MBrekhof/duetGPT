@@ -17,7 +17,12 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
-
+//builder.Logging.ClearProviders();
+//builder.Host.UseSerilog((context, services, configuration) => configuration
+//    .ReadFrom.Configuration(context.Configuration)
+//    .ReadFrom.Services(services)
+//    .Enrich.FromLogContext());
+builder.Services.AddSerilog(); // <-- Add this line
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -74,7 +79,7 @@ builder.Services.AddScoped<ErrorPopupService>();
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
-builder.Services.AddSerilog();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
