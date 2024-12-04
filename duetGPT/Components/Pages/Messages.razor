@@ -42,11 +42,21 @@ else
             <DxGridDataColumn FieldName="StartTime" Caption="Created" Width="150px" DisplayFormat="g" />
             <DxGridDataColumn FieldName="TotalTokens" Caption="Tokens" Width="100px" />
             <DxGridDataColumn FieldName="Cost" Caption="Cost" Width="100px" DisplayFormat="C" />
+            <DxGridDataColumn Width="100px" Caption="Actions">
+                <CellDisplayTemplate>
+                    @{
+                        var thread = (context.DataItem as DuetThread);
+                        <DxButton Text="Delete" 
+                                 Click="@(() => ShowDeleteConfirmation(thread))"
+                                 RenderStyle="ButtonRenderStyle.Danger" />
+                    }
+                </CellDisplayTemplate>
+            </DxGridDataColumn>
         </Columns>
     </DxGrid>
 }
 
-<DxPopup @bind-Visible="PopupVisible" HeaderText="Thread Messages" Width="800px">
+<DxPopup @bind-Visible="@PopupVisible" HeaderText="Thread Messages" Width="800px">
     <Content>
         <div style="max-height: 500px; overflow-y: auto;">
             @if (ThreadMessages != null && ThreadMessages.Any())
@@ -73,11 +83,32 @@ else
     </Content>
 </DxPopup>
 
+<DxPopup @bind-Visible="@DeleteConfirmationVisible" 
+         HeaderText="Confirm Delete" 
+         Width="400px">
+    <Content>
+        <div class="mb-3">
+            Are you sure you want to delete this thread and all its messages?
+        </div>
+        <div>
+            <DxButton Text="Delete" 
+                     Click="@DeleteThreadAsync" 
+                     RenderStyle="ButtonRenderStyle.Danger"
+                     CssClass="me-2" />
+            <DxButton Text="Cancel" 
+                     Click="@(() => DeleteConfirmationVisible = false)" 
+                     RenderStyle="ButtonRenderStyle.Secondary" />
+        </div>
+    </Content>
+</DxPopup>
+
 @code {
     private List<DuetThread> GridDataSource { get; set; }
     private List<DuetMessage> ThreadMessages { get; set; }
     private string ErrorMessage { get; set; }
     private bool PopupVisible { get; set; }
+    private bool DeleteConfirmationVisible { get; set; }
+    private DuetThread ThreadToDelete { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,6 +161,41 @@ else
         catch (Exception ex)
         {
             ErrorMessage = $"Error loading thread messages: {ex.Message}";
+        }
+    }
+
+    private void ShowDeleteConfirmation(DuetThread thread)
+    {
+        ThreadToDelete = thread;
+        DeleteConfirmationVisible = true;
+    }
+
+    private async Task DeleteThreadAsync()
+    {
+        try
+        {
+            if (ThreadToDelete == null) return;
+
+            // Delete associated messages first
+            var messages = await Context.Messages
+                .Where(m => m.ThreadId == ThreadToDelete.Id)
+                .ToListAsync();
+            Context.Messages.RemoveRange(messages);
+
+            // Delete the thread
+            Context.Threads.Remove(ThreadToDelete);
+            await Context.SaveChangesAsync();
+
+            // Remove from grid data source
+            GridDataSource.Remove(ThreadToDelete);
+            ThreadToDelete = null;
+            DeleteConfirmationVisible = false;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error deleting thread: {ex.Message}";
         }
     }
 }

@@ -7,6 +7,7 @@ using DevExpress.XtraRichEdit;
 using DevExpress.Pdf;
 using DevExpress.Blazor;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace duetGPT.Components.Pages;
 
@@ -14,6 +15,7 @@ public partial class Files : ComponentBase
 {
   [Inject] private ErrorPopupService ErrorPopupService { get; set; } = default!;
   [Inject] private ILogger<Files> _logger { get; set; } = default!;
+  [Inject] private AuthenticationStateProvider _authStateProvider { get; set; } = default!;
 
   public class DocumentViewModel
   {
@@ -181,6 +183,10 @@ public partial class Files : ComponentBase
       embeddingSuccess.Remove(dataItem.Id);
       StateHasChanged();
 
+      // Get current user ID
+      var authState = await _authStateProvider.GetAuthenticationStateAsync();
+      var currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
       var document = await DbContext.Documents.FindAsync(dataItem.Id);
       if (document != null)
       {
@@ -217,11 +223,12 @@ public partial class Files : ComponentBase
 
           var knowledge = new Knowledge
           {
-              Title = $"#{i + 1}_{document.FileName}"[..Math.Min(50, $"#{i + 1}_{document.FileName}".Length)],
+            Title = $"#{i + 1}_{document.FileName}"[..Math.Min(50, $"#{i + 1}_{document.FileName}".Length)],
             RagContent = chunk,
             Tokens = wordCount,
             CreationDate = DateTime.UtcNow,
-            VectorDataString = await OpenAIService.GetVectorDataAsync(chunk)
+            VectorDataString = await OpenAIService.GetVectorDataAsync(chunk),
+            OwnerId = currentUserId
           };
 
           DbContext.Set<Knowledge>().Add(knowledge);
@@ -297,7 +304,7 @@ public partial class Files : ComponentBase
     try
     {
       _logger.LogInformation("Loading documents");
-      var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+      var authState = await _authStateProvider.GetAuthenticationStateAsync();
       var user = authState.User;
       var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 

@@ -28,5 +28,11 @@ namespace duetGPT.Data
 
         [Column("creationdate")]
         public DateTime? CreationDate { get; set; } = DateTime.UtcNow;
+
+        [ForeignKey("OwnerId")]
+        public ApplicationUser? Owner { get; set; }
+
+        [Column("ownerid")]
+        public string? OwnerId { get; set; }
     }
 }

@@ -8,6 +8,7 @@
 @rendermode InteractiveServer
 @inject ApplicationDbContext Context
 @inject OpenAIService OpenAIService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @attribute [Authorize]
 
 @code {
@@ -17,9 +18,12 @@
     private string SelectedContent { get; set; } = "";
     private string PopupTitle => KnowledgeData?.RagDataId == 0 ? "New Knowledge" : "Edit Knowledge";
     private Knowledge KnowledgeData { get; set; } = new();
+    private string CurrentUserId { get; set; } = "";
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        CurrentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "";
         await LoadData();
     }
 
@@ -27,7 +31,10 @@
     {
         try
         {
-            GridDataSource = await Context.Set<Knowledge>().ToListAsync();
+            GridDataSource = await Context.Set<Knowledge>()
+                .Include(k => k.Owner)
+                .Where(d => d.OwnerId == CurrentUserId)
+                .ToListAsync();
         }
         catch (Exception ex)
         {
@@ -50,8 +57,12 @@
             RagContent = knowledge.RagContent,
             Tokens = knowledge.Tokens,
             CreationDate = knowledge.CreationDate,
-            VectorDataString = knowledge.VectorDataString
-        } : new Knowledge { CreationDate = DateTime.UtcNow };
+            VectorDataString = knowledge.VectorDataString,
+            OwnerId = knowledge.OwnerId
+        } : new Knowledge { 
+            CreationDate = DateTime.UtcNow,
+            OwnerId = CurrentUserId
+        };
         PopupVisible = true;
     }
 
@@ -61,6 +72,7 @@
         {
             if (KnowledgeData.RagDataId == 0)
             {
+                KnowledgeData.OwnerId = CurrentUserId;
                 Context.Add(KnowledgeData);
             }
             else
@@ -141,6 +153,7 @@
     <Columns>
         <DxGridDataColumn FieldName="RagDataId" Caption="ID" Width="80px" />
         <DxGridDataColumn FieldName="Title" Caption="Title" Width="300px" />
+        <DxGridDataColumn FieldName="Owner.UserName" Caption="Owner" Width="150px" />
         <DxGridDataColumn FieldName="CreationDate" Caption="Created" Width="200px">
             <CellDisplayTemplate>
                 @{
