@@ -27,6 +27,9 @@ namespace duetGPT.Components.Pages
             }
             try
             {
+                running = true;
+                // Force immediate UI refresh
+                await InvokeAsync(StateHasChanged);
                 // Create thread if it doesn't exist yet
                 if (currentThread == null)
                 {
@@ -37,7 +40,7 @@ namespace duetGPT.Components.Pages
                 var client = AnthropicService.GetAnthropicClient();
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
-                running = true;
+
 
                 var userMessage = new Message(
                   RoleType.User, textInput, null
