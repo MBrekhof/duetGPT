@@ -156,5 +156,32 @@
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
     <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
-    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">New Thread</button>  
+    <button class="btn btn-danger" @onclick="ShowNewThreadConfirmation" style="font-weight: bold;">New Thread</button>  
 </div>
+
+<DxPopup HeaderText="Confirm New Thread"
+         @bind-Visible="@isNewThreadPopupVisible"
+         ShowFooter="true">
+    <BodyTemplate>
+        Are you sure you want to start a new thread? This will clear the current conversation.
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-secondary" @onclick="@(() => isNewThreadPopupVisible = false)">Cancel</button>
+        <button class="btn btn-danger" @onclick="ConfirmNewThread">Confirm</button>
+    </FooterTemplate>
+</DxPopup>
+
+@code {
+    private bool isNewThreadPopupVisible = false;
+
+    private void ShowNewThreadConfirmation()
+    {
+        isNewThreadPopupVisible = true;
+    }
+
+    private async Task ConfirmNewThread()
+    {
+        isNewThreadPopupVisible = false;
+        await ClearThread();
+    }
+}

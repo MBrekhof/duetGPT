@@ -1,0 +1,110 @@
+@page "/errorlog"
+@using System.IO
+@rendermode InteractiveServer
+<h3>Error Log Viewer</h3>
+
+@if (_logFiles.Any())
+{
+    <div class="mb-3">
+        <select class="form-select" @onchange="OnLogFileSelected">
+            @foreach (var file in _logFiles)
+            {
+                <option value="@file">@Path.GetFileName(file)</option>
+            }
+        </select>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-warning" role="alert">
+            @_errorMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_logContent))
+    {
+        <div class="log-content">
+            <pre>@_logContent</pre>
+        </div>
+    }
+}
+else
+{
+    <p>No log files found.</p>
+}
+
+<style>
+    .log-content {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    .alert {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+@code {
+    private List<string> _logFiles = new();
+    private string _logContent = string.Empty;
+    private string _errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Logs");
+        if (Directory.Exists(logDirectory))
+        {
+            _logFiles = Directory.GetFiles(logDirectory, "*.txt")
+                                .Union(Directory.GetFiles(logDirectory, "*.log"))
+                                .ToList();
+
+            if (_logFiles.Any())
+            {
+                _logFiles.Sort((a, b) => b.CompareTo(a));
+                LoadLogContent(_logFiles[0]);
+            }
+        }
+    }
+
+    private void OnLogFileSelected(ChangeEventArgs e)
+    {
+        var selectedFile = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(selectedFile))
+        {
+            LoadLogContent(selectedFile);
+        }
+    }
+
+    private void LoadLogContent(string filePath)
+    {
+        try
+        {
+            _errorMessage = string.Empty;
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            using (var reader = new StreamReader(fileStream))
+            {
+                _logContent = reader.ReadToEnd();
+            }
+        }
+        catch (IOException ex)
+        {
+            _errorMessage = $"Unable to read log file: {ex.Message}";
+            _logContent = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading log file: {ex.Message}";
+            _logContent = string.Empty;
+        }
+    }
+}
