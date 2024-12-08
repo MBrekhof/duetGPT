@@ -74,7 +74,7 @@ namespace duetGPT.Components.Pages
                 {
                     knowledgeContent = threadDocs;
                 }
-                
+
                 if (knowledgeContent != null && knowledgeContent.Any())
                 {
                     string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
@@ -113,7 +113,19 @@ namespace duetGPT.Components.Pages
                 string markdown = string.Empty;
                 int totalTokens = 0;
 
-                var res = await client.Messages.GetClaudeMessageAsync(parameters);
+                MessageResponse res;
+                try
+                {
+                    res = await client.Messages.GetClaudeMessageAsync(parameters);
+                    Logger.LogInformation("Successfully received response from Claude API");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to get response from Claude API");
+                    ErrorService.ShowError("Failed to get response from AI service. Please try again.");
+                    throw;
+                }
+
                 userMessages.Add(res.Message);
                 Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
 
