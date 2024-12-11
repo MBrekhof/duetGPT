@@ -41,11 +41,6 @@ namespace duetGPT.Components.Pages
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
 
-
-                var userMessage = new Message(
-                  RoleType.User, textInput, null
-               );
-
                 // Create and save DuetMessage for user input
                 var duetUserMessage = new DuetMessage
                 {
@@ -58,8 +53,6 @@ namespace duetGPT.Components.Pages
                 DbContext.Add(duetUserMessage);
                 DbContext.SaveChanges();
 
-                userMessages.Add(userMessage);
-                chatMessages = userMessages;
                 AssociateDocumentsWithThread();
                 var threadDocs = await GetThreadDocumentsContentAsync();
 
@@ -75,48 +68,101 @@ namespace duetGPT.Components.Pages
                     knowledgeContent = threadDocs;
                 }
 
-                if (knowledgeContent != null && knowledgeContent.Any())
+                string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
+
+                // Get selected prompt content if available
+                if (!string.IsNullOrEmpty(SelectedPrompt))
                 {
-                    string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
+                    var selectedPromptContent = await DbContext.Set<Prompt>()
+                        .Where(p => p.Name == SelectedPrompt)
+                        .Select(p => p.Content)
+                        .FirstOrDefaultAsync();
 
-                    // Get selected prompt content if available
-                    if (!string.IsNullOrEmpty(SelectedPrompt))
+                    if (!string.IsNullOrEmpty(selectedPromptContent))
                     {
-                        var selectedPromptContent = await DbContext.Set<Prompt>()
-                            .Where(p => p.Name == SelectedPrompt)
-                            .Select(p => p.Content)
-                            .FirstOrDefaultAsync();
-
-                        if (!string.IsNullOrEmpty(selectedPromptContent))
-                        {
-                            systemPrompt = selectedPromptContent;
-                        }
+                        systemPrompt = selectedPromptContent;
                     }
-
-                    systemMessages = new List<SystemMessage>()
-                    {
-                        new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-                    };
-                    systemMessages.Add(new SystemMessage(string.Join("\n", knowledgeContent), new CacheControl() { Type = CacheControlType.ephemeral }));
                 }
 
-                var parameters = new MessageParameters()
+                if (knowledgeContent != null && knowledgeContent.Any())
                 {
-                    Messages = chatMessages,
-                    Model = modelChosen,
-                    MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                    Stream = false,
-                    Temperature = 1.0m,
-                    System = systemMessages
-                };
-
-                string markdown = string.Empty;
-                int totalTokens = 0;
+                    systemPrompt += "\n\n" + string.Join("\n", knowledgeContent);
+                }
 
                 MessageResponse res;
+                string markdown;
+
                 try
                 {
-                    res = await client.Messages.GetClaudeMessageAsync(parameters);
+                    if (!string.IsNullOrEmpty(ImageUrl))
+                    {
+                        // Extract base64 data from the data URL
+                        var base64Data = ImageUrl.Split(',')[1];
+                        var mediaType = ImageUrl.Split(',')[0].Split(':')[1].Split(';')[0];
+
+                        var message = new Message
+                        {
+                            Role = RoleType.User,
+                            Content = new List<ContentBase>
+                            {
+                                new ImageContent
+                                {
+                                    Source = new ImageSource
+                                    {
+                                        MediaType = mediaType,
+                                        Data = base64Data
+                                    }
+                                },
+                                new TextContent
+                                {
+                                    Text = textInput
+                                }
+                            }
+                        };
+
+                        var parameters = new MessageParameters
+                        {
+                            Messages = new List<Message> { message },
+                            Model = modelChosen,
+                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                            Stream = false,
+                            Temperature = 1.0m,
+                            System = new List<SystemMessage>
+                            {
+                                new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })
+                            }
+                        };
+
+                        res = await client.Messages.GetClaudeMessageAsync(parameters);
+                        markdown = res.Content[0].ToString() ?? "No answer";
+                    }
+                    else
+                    {
+                        var parameters = new MessageParameters()
+                        {
+                            Messages = new List<Message> { new Message(RoleType.User, textInput, null) },
+                            Model = modelChosen,
+                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                            Stream = true,
+                            Temperature = 1.0m,
+                            System = new List<SystemMessage>()
+                            {
+                                new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                            }
+                        };
+
+                        markdown = string.Empty;
+                        var outputs = new List<MessageResponse>();
+                        await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
+                        {
+                            if (streamRes.Delta != null)
+                            {
+                                markdown += streamRes.Delta.Text;
+                            }
+                            outputs.Add(streamRes);
+                        }
+                        res = outputs.Last();
+                    }
                     Logger.LogInformation("Successfully received response from Claude API");
                 }
                 catch (Exception ex)
@@ -126,7 +172,6 @@ namespace duetGPT.Components.Pages
                     throw;
                 }
 
-                userMessages.Add(res.Message);
                 Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
 
                 // Update user message with token count and cost
@@ -139,7 +184,7 @@ namespace duetGPT.Components.Pages
                 {
                     ThreadId = currentThread.Id,
                     Role = "assistant",
-                    Content = res.Content[0].ToString() ?? "No answer",
+                    Content = markdown,
                     TokenCount = res.Usage.OutputTokens,
                     MessageCost = CalculateCost(res.Usage.OutputTokens, modelChosen)
                 };
@@ -149,16 +194,15 @@ namespace duetGPT.Components.Pages
                 // Generate thread title after first message exchange if not already set
                 if (newThread)
                 {
-                    await GenerateThreadTitle(client, modelChosen, textInput, res.Content[0].ToString());
+                    await GenerateThreadTitle(client, modelChosen, textInput, markdown);
                     newThread = false;
                 }
 
                 // Update Tokens and Cost
-                UpdateTokensAsync(Tokens + totalTokens);
-                UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
+                UpdateTokensAsync(Tokens);
+                UpdateCostAsync(Cost + CalculateCost(Tokens, modelChosen));
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
-                markdown = res.Content[0].ToString() ?? "No answer";
                 if (textInput != null)
                     formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
 
@@ -171,7 +215,8 @@ namespace duetGPT.Components.Pages
                     formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
                 }
 
-                textInput = ""; // clear input.
+                textInput = ""; // clear input
+                ImageUrl = null; // clear image after sending
                 Logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)

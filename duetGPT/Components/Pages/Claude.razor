@@ -2,6 +2,7 @@
 @page "/claude"
 @using Anthropic
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @rendermode InteractiveServer
 @attribute [Authorize]
 
@@ -90,6 +91,23 @@
         gap: 10px;
         align-items: center;
     }
+    .image-container {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .uploaded-image {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+    .image-upload {
+        width: 100%;
+    }
 </style>
 
 <div class="header-container">
@@ -150,6 +168,16 @@
                        SelectionMode="ListBoxSelectionMode.Multiple"
                        ShowCheckboxes="true" SizeMode="SizeMode.Small"  ListBoxHeight="@null"/>
         </div>
+        <div class="info-box">
+            <div class="info-label">Upload Image:</div>
+            <InputFile class="image-upload" OnChange="@HandleImageUpload" accept="image/*" />
+            @if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                <div class="image-container">
+                    <img src="@ImageUrl" class="uploaded-image" alt="Uploaded image" />
+                </div>
+            }
+        </div>
     </div>
 </div>
 
@@ -160,28 +188,13 @@
 </div>
 
 <DxPopup HeaderText="Confirm New Thread"
-         @bind-Visible="@isNewThreadPopupVisible"
+         @bind-Visible="@IsNewThreadPopupVisible"
          ShowFooter="true">
     <BodyTemplate>
         Are you sure you want to start a new thread? This will clear the current conversation.
     </BodyTemplate>
     <FooterTemplate>
-        <button class="btn btn-secondary" @onclick="@(() => isNewThreadPopupVisible = false)">Cancel</button>
+        <button class="btn btn-secondary" @onclick="@(() => IsNewThreadPopupVisible = false)">Cancel</button>
         <button class="btn btn-danger" @onclick="ConfirmNewThread">Confirm</button>
     </FooterTemplate>
 </DxPopup>
-
-@code {
-    private bool isNewThreadPopupVisible = false;
-
-    private void ShowNewThreadConfirmation()
-    {
-        isNewThreadPopupVisible = true;
-    }
-
-    private async Task ConfirmNewThread()
-    {
-        isNewThreadPopupVisible = false;
-        await ClearThread();
-    }
-}

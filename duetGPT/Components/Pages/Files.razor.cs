@@ -8,6 +8,7 @@ using DevExpress.Pdf;
 using DevExpress.Blazor;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components.Authorization;
+using System.Text.RegularExpressions;
 
 namespace duetGPT.Components.Pages;
 
@@ -36,81 +37,261 @@ public partial class Files : ComponentBase
   private int? currentlyEmbeddingId = null;
   private Dictionary<int, bool> embeddingSuccess = new Dictionary<int, bool>();
 
+  private class TextChunk
+  {
+    public string Content { get; set; } = string.Empty;
+    public int StartPosition { get; set; }
+    public int EndPosition { get; set; }
+    public Dictionary<string, string> Metadata { get; set; } = new();
+  }
+
   private List<string> SplitArticleIntoChunks(string articleText, int tokenLimit)
   {
     try
     {
       _logger.LogInformation($"Starting to split article into chunks with token limit: {tokenLimit}");
 
-      // Remove line breaks
-      articleText = articleText.Replace("\r\n", "");
+      // Clean and normalize the text
+      articleText = NormalizeText(articleText);
 
-      // Split the article text by markers
-      string markerStart = "<#>";
-      string[] sections = articleText.Split(new[] { markerStart }, StringSplitOptions.None);
+      // Extract structural elements
+      var sections = ExtractStructuralElements(articleText);
 
-      // Initialize a list to hold the chunks
-      List<string> chunks = new List<string>();
+      // Create overlapping chunks with metadata
+      var chunks = CreateOverlappingChunks(sections, tokenLimit);
 
-      // Initialize a StringBuilder to build each chunk
-      StringBuilder chunk = new StringBuilder();
-
-      // Initialize a counter to keep track of the number of tokens in the current chunk
-      int tokenCount = 0;
-
-      // Iterate over the sections
-      foreach (string section in sections)
+      // Convert chunks to final format
+      var finalChunks = chunks.Select(chunk =>
       {
-        if (section.Contains(markerStart))
+        var metadata = new StringBuilder();
+        foreach (var meta in chunk.Metadata)
         {
-          string markedSection = section.Replace(markerStart, "");
-          string[] tokens = markedSection.Split(' ');
-          if (tokenCount + tokens.Length > tokenLimit)
-          {
-            chunks.Add(chunk.ToString());
-            chunk.Clear();
-            tokenCount = 0;
-          }
-          chunk.Append(markedSection);
-          tokenCount += tokens.Length;
+          metadata.AppendLine($"[{meta.Key}: {meta.Value}]");
         }
-        else
-        {
-          string[] sentences = section.Split(new[] { ". " }, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-          foreach (string sentence in sentences)
-          {
-            string[] tokens = sentence.Split(' ');
-            if (tokens.Length < 2) continue;
-            if (tokenCount + tokens.Length > tokenLimit)
-            {
-              chunks.Add(chunk.ToString());
-              chunk.Clear();
-              chunk.Append(sentence + ". ");
-              tokenCount = tokens.Length;
-            }
-            else
-            {
-              chunk.Append(sentence + ". ");
-              tokenCount += tokens.Length;
-            }
-          }
-        }
-      }
+        return $"{metadata}\n{chunk.Content}".Trim();
+      }).ToList();
 
-      // Add the last chunk to the list, if it's not empty
-      if (chunk.Length > 0)
-      {
-        chunks.Add(chunk.ToString());
-      }
-
-      _logger.LogInformation($"Successfully split article into {chunks.Count} chunks");
-      return chunks;
+      _logger.LogInformation($"Successfully split article into {finalChunks.Count} chunks");
+      return finalChunks;
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error splitting article into chunks");
       throw new Exception("Failed to split article into chunks", ex);
     }
+  }
+
+  private string NormalizeText(string text)
+  {
+    // Remove excessive whitespace while preserving paragraph breaks
+    text = Regex.Replace(text, @"\s+", " ");
+    text = Regex.Replace(text, @"\n\s*\n", "\n\n");
+
+    // Normalize unicode characters
+    text = text.Normalize(NormalizationForm.FormKC);
+
+    // Replace special characters that might interfere with processing
+    text = text.Replace("\r", "\n")
+               .Replace("\t", " ")
+               .Replace("•", "* ");
+
+    return text.Trim();
+  }
+
+  private List<TextChunk> ExtractStructuralElements(string text)
+  {
+    var chunks = new List<TextChunk>();
+    var position = 0;
+
+    // Split into paragraphs first
+    var paragraphs = text.Split(new[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+
+    foreach (var paragraph in paragraphs)
+    {
+      // Detect if this is a header
+      bool isHeader = IsLikelyHeader(paragraph);
+
+      // Detect if this contains a list
+      bool isList = paragraph.Contains("* ") || Regex.IsMatch(paragraph, @"^\d+\.");
+
+      var chunk = new TextChunk
+      {
+        Content = paragraph.Trim(),
+        StartPosition = position,
+        EndPosition = position + paragraph.Length,
+        Metadata = new Dictionary<string, string>
+        {
+          { "type", isHeader ? "header" : isList ? "list" : "paragraph" },
+          { "length", paragraph.Split(' ').Length.ToString() }
+        }
+      };
+
+      // Add semantic metadata
+      if (isHeader)
+      {
+        chunk.Metadata["importance"] = "high";
+      }
+
+      // Detect potential key phrases
+      var keyPhrases = ExtractKeyPhrases(paragraph);
+      if (keyPhrases.Any())
+      {
+        chunk.Metadata["key_phrases"] = string.Join(", ", keyPhrases);
+      }
+
+      chunks.Add(chunk);
+      position += paragraph.Length + 2; // +2 for the paragraph separator
+    }
+
+    return chunks;
+  }
+
+  private bool IsLikelyHeader(string text)
+  {
+    // Headers are typically short
+    if (text.Length > 100) return false;
+
+    // Check for common header patterns
+    if (Regex.IsMatch(text, @"^[A-Z][^.!?]*$")) return true;
+    if (Regex.IsMatch(text, @"^\d+(\.\d+)*\s+[A-Z]")) return true;
+    if (text.All(c => char.IsUpper(c) || char.IsWhiteSpace(c) || char.IsDigit(c))) return true;
+
+    return false;
+  }
+
+  private List<string> ExtractKeyPhrases(string text)
+  {
+    var keyPhrases = new List<string>();
+
+    // Look for phrases in quotes
+    var quotes = Regex.Matches(text, @"""([^""]+)""");
+    keyPhrases.AddRange(quotes.Select(m => m.Groups[1].Value));
+
+    // Look for phrases with special formatting (assuming they were preserved from the original document)
+    var specialFormatting = Regex.Matches(text, @"\*([^*]+)\*");
+    keyPhrases.AddRange(specialFormatting.Select(m => m.Groups[1].Value));
+
+    // Look for likely key phrases based on common patterns
+    var patterns = new[]
+    {
+      @"(?:is|are|was|were)\s+(?:called|known as|defined as)\s+([^.,;]+)",
+      @"(?:important|key|critical|essential|significant)\s+(?:is|are|factor|aspect|element)s?\s+([^.,;]+)",
+      @"(?:in conclusion|to summarize|therefore)\s+([^.,;]+)"
+    };
+
+    foreach (var pattern in patterns)
+    {
+      var matches = Regex.Matches(text, pattern, RegexOptions.IgnoreCase);
+      keyPhrases.AddRange(matches.Select(m => m.Groups[1].Value.Trim()));
+    }
+
+    return keyPhrases.Distinct().ToList();
+  }
+
+  private List<TextChunk> CreateOverlappingChunks(List<TextChunk> elements, int tokenLimit)
+  {
+    var chunks = new List<TextChunk>();
+    var currentChunk = new StringBuilder();
+    var currentMetadata = new Dictionary<string, string>();
+    var overlap = tokenLimit / 5; // 20% overlap
+
+    foreach (var element in elements)
+    {
+      var elementWords = element.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+      var elementTokens = elementWords.Length;
+
+      // If the element itself is larger than the token limit, split it
+      if (elementTokens > tokenLimit)
+      {
+        // If there's content in the current chunk, add it first
+        if (currentChunk.Length > 0)
+        {
+          chunks.Add(new TextChunk
+          {
+            Content = currentChunk.ToString().Trim(),
+            Metadata = new Dictionary<string, string>(currentMetadata)
+          });
+          currentChunk.Clear();
+          currentMetadata.Clear();
+        }
+
+        // Split the large element into smaller chunks
+        for (int i = 0; i < elementWords.Length; i += tokenLimit - overlap)
+        {
+          var chunkWords = elementWords.Skip(i).Take(tokenLimit).ToArray();
+          var chunkContent = string.Join(" ", chunkWords);
+
+          chunks.Add(new TextChunk
+          {
+            Content = chunkContent,
+            Metadata = new Dictionary<string, string>(element.Metadata)
+          });
+        }
+        continue;
+      }
+
+      // Calculate the current chunk's token count
+      var currentTokens = currentChunk.Length > 0
+        ? currentChunk.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Length
+        : 0;
+
+      // Check if adding this element would exceed the token limit
+      if (currentTokens + elementTokens > tokenLimit)
+      {
+        // Store the current chunk
+        if (currentChunk.Length > 0)
+        {
+          chunks.Add(new TextChunk
+          {
+            Content = currentChunk.ToString().Trim(),
+            Metadata = new Dictionary<string, string>(currentMetadata)
+          });
+
+          // If this is not a header, keep overlap from previous chunk
+          if (element.Metadata["type"] != "header")
+          {
+            var words = currentChunk.ToString().Split(' ');
+            var overlapText = string.Join(" ", words.Skip(Math.Max(0, words.Length - overlap)));
+            currentChunk.Clear().Append(overlapText + " ");
+            currentTokens = overlap;
+          }
+          else
+          {
+            currentChunk.Clear();
+            currentTokens = 0;
+          }
+          currentMetadata.Clear();
+        }
+      }
+
+      // Add the element to the current chunk
+      currentChunk.Append(element.Content + " ");
+
+      // Merge metadata
+      foreach (var meta in element.Metadata)
+      {
+        if (!currentMetadata.ContainsKey(meta.Key))
+        {
+          currentMetadata[meta.Key] = meta.Value;
+        }
+        else if (meta.Key == "key_phrases")
+        {
+          currentMetadata[meta.Key] += ", " + meta.Value;
+        }
+      }
+    }
+
+    // Add the final chunk if there's anything left
+    if (currentChunk.Length > 0)
+    {
+      chunks.Add(new TextChunk
+      {
+        Content = currentChunk.ToString().Trim(),
+        Metadata = new Dictionary<string, string>(currentMetadata)
+      });
+    }
+
+    return chunks;
   }
 
   private string ExtractTextFromPdf(byte[] content)
