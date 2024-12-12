@@ -215,8 +215,6 @@ namespace duetGPT.Components.Pages
                 }
 
                 textInput = ""; // clear input
-                ImageUrl = null; // clear image URL for display
-                await ClearImageData(); // clear image data and temp file
                 Logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)
