@@ -26,6 +26,9 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        z-index: 1000;
+        background-color: white;
+        padding: 10px;
     }
     .input-box {
         width: 800px;
@@ -183,8 +186,8 @@
 
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
-    <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
-    <button class="btn btn-danger" @onclick="ShowNewThreadConfirmation" style="font-weight: bold;">New Thread</button>  
+    <button class="btn btn-primary" @onclick="SendClick" disabled="@running">&#x2192;</button>
+    <button class="btn btn-danger" @onclick="ShowNewThreadConfirmation" disabled="@running" style="font-weight: bold;">New Thread</button>  
 </div>
 
 <DxPopup HeaderText="Confirm New Thread"

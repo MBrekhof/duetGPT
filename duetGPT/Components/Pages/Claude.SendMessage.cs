@@ -1,13 +1,11 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
-using Markdig;
 using duetGPT.Data;
 using duetGPT.Services;
-using Microsoft.EntityFrameworkCore;
-using Pgvector;
-using Pgvector.EntityFrameworkCore;
+using Markdig;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
 
 namespace duetGPT.Components.Pages
 {
@@ -53,19 +51,16 @@ namespace duetGPT.Components.Pages
                 DbContext.Add(duetUserMessage);
                 DbContext.SaveChanges();
 
-                AssociateDocumentsWithThread();
-                var threadDocs = await GetThreadDocumentsContentAsync();
-
-                // If no local documents, get relevant knowledge
-                List<string> knowledgeContent;
-                if (threadDocs == null || !threadDocs.Any())
+                // Only associate and get documents if files are selected
+                List<string> knowledgeContent = new List<string>();
+                if (SelectedFiles != null && SelectedFiles.Any())
                 {
-                    var knowledgeResults = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
-                    knowledgeContent = knowledgeResults.Select(k => k.Content).ToList();
-                }
-                else
-                {
-                    knowledgeContent = threadDocs;
+                    AssociateDocumentsWithThread();
+                    var threadDocs = await GetThreadDocumentsContentAsync();
+                    if (threadDocs != null && threadDocs.Any())
+                    {
+                        knowledgeContent = threadDocs;
+                    }
                 }
 
                 string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
@@ -84,7 +79,7 @@ namespace duetGPT.Components.Pages
                     }
                 }
 
-                if (knowledgeContent != null && knowledgeContent.Any())
+                if (knowledgeContent.Any())
                 {
                     systemPrompt += "\n\n" + string.Join("\n", knowledgeContent);
                 }
@@ -94,13 +89,15 @@ namespace duetGPT.Components.Pages
 
                 try
                 {
-                    if (!string.IsNullOrEmpty(ImageUrl))
-                    {
-                        // Extract base64 data from the data URL
-                        var base64Data = ImageUrl.Split(',')[1];
-                        var mediaType = ImageUrl.Split(',')[0].Split(':')[1].Split(';')[0];
+                    Message message;
 
-                        var message = new Message
+                    // Create message with image if available
+                    var imageBytes = await GetCurrentImageBytes();
+                    if (imageBytes != null && CurrentImageType != null)
+                    {
+                        string base64Data = Convert.ToBase64String(imageBytes);
+
+                        message = new Message
                         {
                             Role = RoleType.User,
                             Content = new List<ContentBase>
@@ -109,7 +106,7 @@ namespace duetGPT.Components.Pages
                                 {
                                     Source = new ImageSource
                                     {
-                                        MediaType = mediaType,
+                                        MediaType = CurrentImageType,
                                         Data = base64Data
                                     }
                                 },
@@ -119,38 +116,34 @@ namespace duetGPT.Components.Pages
                                 }
                             }
                         };
-
-                        var parameters = new MessageParameters
-                        {
-                            Messages = new List<Message> { message },
-                            Model = modelChosen,
-                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                            Stream = false,
-                            Temperature = 1.0m,
-                            System = new List<SystemMessage>
-                            {
-                                new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })
-                            }
-                        };
-
-                        res = await client.Messages.GetClaudeMessageAsync(parameters);
-                        markdown = res.Content[0].ToString() ?? "No answer";
                     }
                     else
                     {
-                        var parameters = new MessageParameters()
-                        {
-                            Messages = new List<Message> { new Message(RoleType.User, textInput, null) },
-                            Model = modelChosen,
-                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                            Stream = true,
-                            Temperature = 1.0m,
-                            System = new List<SystemMessage>()
-                            {
-                                new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-                            }
-                        };
+                        message = new Message(RoleType.User, textInput, null);
+                    }
 
+                    // Explicitly check for image content
+                    bool hasImage = false;
+                    if (message.Content != null)
+                    {
+                        hasImage = message.Content.Any(c => c is ImageContent);
+                    }
+
+                    var parameters = new MessageParameters
+                    {
+                        Messages = new List<Message> { message },
+                        Model = modelChosen,
+                        MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                        Stream = !hasImage, // Don't stream if we have an image
+                        Temperature = 1.0m,
+                        System = new List<SystemMessage>
+                        {
+                            new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })
+                        }
+                    };
+
+                    if ((bool)parameters.Stream)
+                    {
                         markdown = string.Empty;
                         var outputs = new List<MessageResponse>();
                         await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
@@ -163,6 +156,12 @@ namespace duetGPT.Components.Pages
                         }
                         res = outputs.Last();
                     }
+                    else
+                    {
+                        res = await client.Messages.GetClaudeMessageAsync(parameters);
+                        markdown = res.Content[0].ToString() ?? "No answer";
+                    }
+
                     Logger.LogInformation("Successfully received response from Claude API");
                 }
                 catch (Exception ex)
@@ -216,7 +215,8 @@ namespace duetGPT.Components.Pages
                 }
 
                 textInput = ""; // clear input
-                ImageUrl = null; // clear image after sending
+                ImageUrl = null; // clear image URL for display
+                await ClearImageData(); // clear image data and temp file
                 Logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)
@@ -232,6 +232,7 @@ namespace duetGPT.Components.Pages
             finally
             {
                 running = false;
+                StateHasChanged();
             }
         }
 
