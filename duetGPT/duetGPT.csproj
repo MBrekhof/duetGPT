@@ -6,11 +6,11 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Anthropic.SDK" Version="4.4.2" />
-    <PackageReference Include="DevExpress.Blazor" Version="24.1.7" />
-    <PackageReference Include="DevExpress.Document.Processor" Version="24.1.7" />
-    <PackageReference Include="DevExpress.Pdf.Core" Version="24.1.7" />
-    <PackageReference Include="DevExpress.RichEdit.Core" Version="24.1.7" />
-    <PackageReference Include="DevExpress.RichEdit.Export" Version="24.1.7" />
+    <PackageReference Include="DevExpress.Blazor" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Document.Processor" Version="24.2.3" />
+    <PackageReference Include="DevExpress.Pdf.Core" Version="24.2.3" />
+    <PackageReference Include="DevExpress.RichEdit.Core" Version="24.2.3" />
+    <PackageReference Include="DevExpress.RichEdit.Export" Version="24.2.3" />
     <PackageReference Include="EntityFrameworkCore.NamingConventions" Version="8.0.0" />
     <PackageReference Include="Markdig" Version="0.38.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.10" />
@@ -46,6 +46,7 @@
     <EmbeddedResource Include="Red_Apple.jpg" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Components\Shared\" />
     <Folder Include="Uploads\" />
   </ItemGroup>
 	<ItemGroup>

@@ -1,10 +1,15 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using System.IO;
+using DevExpress.Blazor;
 
 namespace duetGPT.Components.Pages
 {
   public partial class Claude
   {
+    [Inject]
+    private IToastNotificationService ToastService { get; set; } = default!;
+
     private string? ImageUrl { get; set; }
     private string? CurrentImagePath { get; set; }  // Store file path instead of byte array
     private string? CurrentImageType { get; set; }
@@ -60,7 +65,14 @@ namespace duetGPT.Components.Pages
       catch (Exception ex)
       {
         Logger.LogError(ex, "Error uploading image");
-        ErrorService.ShowError($"Failed to upload image: {ex.Message}");
+        ToastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "ClaudePage",
+          ThemeMode = ToastThemeMode.Dark,
+          RenderStyle = ToastRenderStyle.Danger,
+          Title = "Upload Error",
+          Text = $"Failed to upload image: {ex.Message}"
+        });
         // Clear image data on error
         await ClearImageData();
       }

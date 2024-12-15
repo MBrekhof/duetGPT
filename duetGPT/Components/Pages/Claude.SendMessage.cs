@@ -1,6 +1,7 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
+using DevExpress.Blazor;
 using duetGPT.Data;
 using duetGPT.Services;
 using Markdig;
@@ -167,7 +168,14 @@ namespace duetGPT.Components.Pages
                 catch (Exception ex)
                 {
                     Logger.LogError(ex, "Failed to get response from Claude API");
-                    ErrorService.ShowError("Failed to get response from AI service. Please try again.");
+                    ToastService.ShowToast(new ToastOptions()
+                    {
+                        ProviderName = "ClaudePage",
+                        ThemeMode = ToastThemeMode.Dark,
+                        RenderStyle = ToastRenderStyle.Danger,
+                        Title = "API Error",
+                        Text = "Failed to get response from AI service. Please try again."
+                    });
                     throw;
                 }
 
@@ -220,12 +228,26 @@ namespace duetGPT.Components.Pages
             catch (HttpRequestException ex)
             {
                 Logger.LogError(ex, "Network error while communicating with Anthropic API");
-                ErrorService.ShowError("Error communicating with AI service. Please check your network connection and try again.");
+                ToastService.ShowToast(new ToastOptions()
+                {
+                    ProviderName = "ClaudePage",
+                    ThemeMode = ToastThemeMode.Dark,
+                    RenderStyle = ToastRenderStyle.Danger,
+                    Title = "Network Error",
+                    Text = "Error communicating with AI service. Please check your network connection and try again."
+                });
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error processing message");
-                ErrorService.ShowError("An error occurred while processing your message. Please try again.");
+                ToastService.ShowToast(new ToastOptions()
+                {
+                    ProviderName = "ClaudePage",
+                    ThemeMode = ToastThemeMode.Dark,
+                    RenderStyle = ToastRenderStyle.Danger,
+                    Title = "Processing Error",
+                    Text = "An error occurred while processing your message. Please try again."
+                });
             }
             finally
             {

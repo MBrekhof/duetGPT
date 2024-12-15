@@ -15,17 +15,25 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Files> Logger
 @inject OpenAIService OpenAIService
+@inject IToastNotificationService ToastService
 @rendermode InteractiveServer
-@attribute [Authorize] 
+@attribute [Authorize]
+
+<DxToastProvider Name="FilesPage"
+                 MaxToastCount="5"
+                 AnimationType="ToastAnimationType.Slide"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 DisplayTime="TimeSpan.FromSeconds(3)"
+                 Width="320px"/>
 
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
 
-<DxGrid @ref="Grid" 
-        Data="@Documents" 
-        ShowFilterRow="true" 
-        ShowPager="true" 
+<DxGrid @ref="Grid"
+        Data="@Documents"
+        ShowFilterRow="true"
+        ShowPager="true"
         PageSize="10">
     <Columns>
         <DxGridCommandColumn Width="240px">
@@ -36,14 +44,16 @@
                    var isEmbedding = currentlyEmbeddingId == doc.Id;
                    var hasSuccess = embeddingSuccess.TryGetValue(doc.Id, out var success);
                }
-               <DxButton Text="@(isEmbedding ? "Embedding..." : "Embed")"
+               <DxButton IconCssClass="@(isEmbedding ? "oi oi-clock" : "oi oi-code")"
                         RenderStyle="ButtonRenderStyle.Primary"
                         Click="@(() => Embed_Click(doc))"
                         Enabled="@(!isEmbedding)"
-                        CssClass="@($"me-2 {(hasSuccess ? (success ? "btn-success" : "btn-danger") : "")}")"/>
-               <DxButton Text="Delete"
+                        CssClass="@($"me-2 {(hasSuccess ? (success ? "btn-success" : "btn-danger") : "")}")"
+                        Attributes="@(new Dictionary<string, object> { ["title"] = isEmbedding ? "Embedding..." : "Embed" })"/>
+               <DxButton IconCssClass="oi oi-trash"
                         RenderStyle="ButtonRenderStyle.Danger"
-                        Click="@(() => Delete_Click(doc))"/>
+                        Click="@(() => Delete_Click(doc))"
+                        Attributes="@(new Dictionary<string, object> { ["title"] = "Delete" })"/>
              </div>
           </CellDisplayTemplate>
         </DxGridCommandColumn>

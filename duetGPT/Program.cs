@@ -71,8 +71,6 @@ builder.Services.AddSingleton<OpenAIService>();
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
 
-// Add ErrorPopupService
-builder.Services.AddScoped<ErrorPopupService>();
 
 // Add a hosted service to check Anthropic client status
 //builder.Services.AddHostedService<AnthropicHealthCheckService>();

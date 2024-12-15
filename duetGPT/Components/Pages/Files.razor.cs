@@ -14,9 +14,9 @@ namespace duetGPT.Components.Pages;
 
 public partial class Files : ComponentBase
 {
-  [Inject] private ErrorPopupService ErrorPopupService { get; set; } = default!;
   [Inject] private ILogger<Files> _logger { get; set; } = default!;
   [Inject] private AuthenticationStateProvider _authStateProvider { get; set; } = default!;
+  [Inject] private IToastNotificationService _toastService { get; set; } = default!;
 
   public class DocumentViewModel
   {
@@ -418,19 +418,40 @@ public partial class Files : ComponentBase
         await DbContext.SaveChangesAsync();
         embeddingSuccess[dataItem.Id] = true;
         _logger.LogInformation($"Successfully created {chunks.Count} knowledge records from document: {document.FileName}");
-        ErrorPopupService.ShowError($"Successfully processed document: {document.FileName}");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Success,
+          Title = "Success",
+          Text = $"Successfully processed document: {document.FileName}"
+        });
       }
       else
       {
         _logger.LogWarning($"Document with ID {dataItem.Id} not found");
-        ErrorPopupService.ShowError("Document not found");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Warning,
+          Title = "Warning",
+          Text = "Document not found"
+        });
       }
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, $"Error processing document ID {dataItem.Id} for embedding");
       embeddingSuccess[dataItem.Id] = false;
-      ErrorPopupService.ShowError($"Error processing document: {ex.Message}");
+      _toastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "FilesPage",
+        ThemeMode = ToastThemeMode.Saturated,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error processing document: {ex.Message}"
+      });
     }
     finally
     {
@@ -451,18 +472,39 @@ public partial class Files : ComponentBase
         await DbContext.SaveChangesAsync();
         await LoadDocumentsAsync(); // Refresh the grid data
         _logger.LogInformation($"Successfully deleted document: {document.FileName}");
-        ErrorPopupService.ShowError($"Successfully deleted document: {document.FileName}");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Success,
+          Title = "Success",
+          Text = $"Successfully deleted document: {document.FileName}"
+        });
       }
       else
       {
         _logger.LogWarning($"Document with ID {dataItem.Id} not found for deletion");
-        ErrorPopupService.ShowError("Document not found");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Warning,
+          Title = "Warning",
+          Text = "Document not found"
+        });
       }
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, $"Error deleting document ID {dataItem.Id}");
-      ErrorPopupService.ShowError($"Error deleting document: {ex.Message}");
+      _toastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "FilesPage",
+        ThemeMode = ToastThemeMode.Saturated,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error deleting document: {ex.Message}"
+      });
     }
   }
 
@@ -476,7 +518,14 @@ public partial class Files : ComponentBase
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error initializing Files component");
-      ErrorPopupService.ShowError("Error loading documents");
+      _toastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "FilesPage",
+        ThemeMode = ToastThemeMode.Saturated,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = "Error loading documents"
+      });
     }
   }
 
@@ -512,13 +561,27 @@ public partial class Files : ComponentBase
       else
       {
         _logger.LogWarning("No authenticated user found");
-        ErrorPopupService.ShowError("Please log in to view documents");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Warning,
+          Title = "Authentication Required",
+          Text = "Please log in to view documents"
+        });
       }
     }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error loading documents");
-      ErrorPopupService.ShowError("Error loading documents");
+      _toastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "FilesPage",
+        ThemeMode = ToastThemeMode.Saturated,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = "Error loading documents"
+      });
       throw;
     }
   }

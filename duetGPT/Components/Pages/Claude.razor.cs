@@ -1,14 +1,9 @@
 using Anthropic.SDK.Messaging;
 using duetGPT.Data;
 using duetGPT.Services;
-using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using DevExpress.Pdf;
-using DevExpress.XtraRichEdit;
-using System.Text;
 
 namespace duetGPT.Components.Pages
 {
@@ -18,7 +13,7 @@ namespace duetGPT.Components.Pages
         [Inject] private AnthropicService AnthropicService { get; set; }
         [Inject] private ApplicationDbContext DbContext { get; set; }
         [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
-        [Inject] private ErrorPopupService ErrorService { get; set; }
+
 
         string textInput = "";
         List<Message> chatMessages = new();
