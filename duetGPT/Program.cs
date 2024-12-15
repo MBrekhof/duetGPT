@@ -33,6 +33,8 @@ builder.Services.AddDevExpressBlazor(options =>
     options.SizeMode = DevExpress.Blazor.SizeMode.Medium;
 });
 
+builder.Services.AddDevExpressServerSideBlazorPdfViewer();
+
 // Configure the maximum request body size to 50 MB
 builder.Services.Configure<FormOptions>(options =>
 {

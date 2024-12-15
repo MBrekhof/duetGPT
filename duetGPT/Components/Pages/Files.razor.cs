@@ -1,13 +1,14 @@
-using Microsoft.AspNetCore.Components;
+using Anthropic.SDK.Messaging;
+using DevExpress.Blazor;
+using DevExpress.Pdf;
+using DevExpress.XtraRichEdit;
 using duetGPT.Data;
 using duetGPT.Services;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
-using DevExpress.XtraRichEdit;
-using DevExpress.Pdf;
-using DevExpress.Blazor;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.EntityFrameworkCore;
+using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace duetGPT.Components.Pages;
@@ -31,11 +32,10 @@ public partial class Files : ComponentBase
 
   protected IGrid? Grid { get; set; }
   protected IList<DocumentViewModel> Documents { get; set; } = new List<DocumentViewModel>();
-  private bool isDeleteConfirmationVisible = false;
-  private int recordIdToDelete;
-  private int counter = 0;
   private int? currentlyEmbeddingId = null;
   private Dictionary<int, bool> embeddingSuccess = new Dictionary<int, bool>();
+  private byte[]? selectedPdfContent;
+  private bool showPdfViewer;
 
   private class TextChunk
   {
@@ -78,6 +78,47 @@ public partial class Files : ComponentBase
     {
       _logger.LogError(ex, "Error splitting article into chunks");
       throw new Exception("Failed to split article into chunks", ex);
+    }
+  }
+
+  protected async Task View_Click(DocumentViewModel dataItem)
+  {
+    try
+    {
+      _logger.LogInformation($"Attempting to view document ID: {dataItem.Id}");
+      var document = await DbContext.Documents.FindAsync(dataItem.Id);
+
+      if (document != null && document.Content!= null && document.ContentType == "application/pdf")
+      {
+        selectedPdfContent = document.Content;
+        showPdfViewer = true;
+        StateHasChanged();
+        _logger.LogInformation($"Successfully loaded PDF for viewing: {document.FileName}");
+      }
+      else
+      {
+        _logger.LogWarning($"Document with ID {dataItem.Id} not found or is not a PDF");
+        _toastService.ShowToast(new ToastOptions()
+        {
+          ProviderName = "FilesPage",
+          ThemeMode = ToastThemeMode.Saturated,
+          RenderStyle = ToastRenderStyle.Warning,
+          Title = "Warning",
+          Text = "Document not found or is not a PDF file"
+        });
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, $"Error viewing document ID {dataItem.Id}");
+      _toastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "FilesPage",
+        ThemeMode = ToastThemeMode.Saturated,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error viewing document: {ex.Message}"
+      });
     }
   }
 

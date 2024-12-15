@@ -10,7 +10,13 @@
 @using DevExpress.XtraRichEdit
 @using System.Text
 @using DevExpress.Blazor
+@using DevExpress.Blazor.PdfViewer
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+@using DevExpress.Blazor.PdfViewer
+
 @inject ApplicationDbContext DbContext
+
+
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Files> Logger
@@ -50,6 +56,14 @@
                         Enabled="@(!isEmbedding)"
                         CssClass="@($"me-2 {(hasSuccess ? (success ? "btn-success" : "btn-danger") : "")}")"
                         Attributes="@(new Dictionary<string, object> { ["title"] = isEmbedding ? "Embedding..." : "Embed" })"/>
+               @if (doc.ContentType == "application/pdf")
+               {
+                   <DxButton IconCssClass="oi oi-eye"
+                            RenderStyle="ButtonRenderStyle.Secondary"
+                            Click="@(() => View_Click(doc))"
+                            CssClass="me-2"
+                            Attributes="@(new Dictionary<string, object> { ["title"] = "View PDF" })"/>
+               }
                <DxButton IconCssClass="oi oi-trash"
                         RenderStyle="ButtonRenderStyle.Danger"
                         Click="@(() => Delete_Click(doc))"
@@ -65,3 +79,19 @@
         <DxGridDataColumn FieldName="OwnerName" Caption="Owner" />
     </Columns>
 </DxGrid>
+
+@if (showPdfViewer && selectedPdfContent != null)
+{
+    <DxPopup @bind-Visible="@showPdfViewer" HeaderText="PDF" Height="80%" Width="60%">
+         <BodyTemplate Context="PopupContext">
+    <div class="mt-4">
+        <h4>PDF Viewer</h4>
+
+        <DxPdfViewer CssClass="w-100 pdf-viewer"
+                     DocumentContent="@selectedPdfContent" 
+                     IsSinglePagePreview="true"
+                     />
+    </div>
+    </BodyTemplate>
+    </DxPopup>
+}

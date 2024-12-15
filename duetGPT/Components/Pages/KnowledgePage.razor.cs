@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using duetGPT.Data;
 using duetGPT.Services;
+using DevExpress.Blazor;
 
 namespace duetGPT.Components.Pages;
 
@@ -17,6 +18,9 @@ public partial class KnowledgePage
 
   [Inject]
   private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+
+  [Inject]
+  private IToastNotificationService ToastService { get; set; } = default!;
 
   private List<Knowledge> GridDataSource { get; set; } = new();
   private bool PopupVisible { get; set; }
@@ -44,7 +48,14 @@ public partial class KnowledgePage
     }
     catch (Exception ex)
     {
-      Console.WriteLine($"Error fetching knowledge data: {ex.Message}");
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error fetching knowledge data: {ex.Message}"
+      });
     }
   }
 
@@ -96,11 +107,42 @@ public partial class KnowledgePage
       }
       await Context.SaveChangesAsync();
       await LoadData();
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Success,
+        Title = "Success",
+        Text = "Knowledge embedded successfully"
+      });
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Success,
+        Title = "Success",
+        Text = "Knowledge deleted successfully"
+      });
       PopupVisible = false;
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Success,
+        Title = "Success",
+        Text = KnowledgeData.RagDataId == 0 ? "Knowledge created successfully" : "Knowledge updated successfully"
+      });
     }
     catch (Exception ex)
     {
-      Console.WriteLine($"Error saving knowledge data: {ex.Message}");
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error saving knowledge data: {ex.Message}"
+      });
     }
   }
 
@@ -118,7 +160,14 @@ public partial class KnowledgePage
     }
     catch (Exception ex)
     {
-      Console.WriteLine($"Error deleting knowledge: {ex.Message}");
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error deleting knowledge: {ex.Message}"
+      });
     }
   }
 
@@ -141,7 +190,14 @@ public partial class KnowledgePage
     }
     catch (Exception ex)
     {
-      Console.WriteLine($"Error embedding knowledge: {ex.Message}");
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Danger,
+        Title = "Error",
+        Text = $"Error embedding knowledge: {ex.Message}"
+      });
     }
   }
 }

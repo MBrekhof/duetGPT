@@ -5,6 +5,15 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 
+<div class="d-flex align-items-center">
+    <DxToastProvider Name="KnowledgeToasts"
+                     MaxToastCount="5"
+                     AnimationType="ToastAnimationType.Slide"
+                     HorizontalAlignment="HorizontalAlignment.Center"
+                     DisplayTime="TimeSpan.FromSeconds(3)"
+                     Width="320px"/>
+</div>
+
 <h3>Knowledge Management</h3>
 
 <div class="mb-3">
