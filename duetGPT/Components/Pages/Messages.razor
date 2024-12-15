@@ -1,7 +1,29 @@
 @page "/messages"
 @using DevExpress.Blazor
 @using duetGPT.Data
+@using Markdig
 @rendermode InteractiveServer
+
+<style>
+    .bg-blue {
+        background-color: #add8e6;
+        color: #000000;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    .bg-green {
+        background-color: #90ee90;
+        color: #000000;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+    .message-content {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>
 
 <h3>Message Threads</h3>
 
@@ -56,16 +78,24 @@ else
         <div style="max-height: 500px; overflow-y: auto;">
             @if (ThreadMessages != null && ThreadMessages.Any())
             {
-                <DxGrid Data="@ThreadMessages" ShowPager="true" PageSize="10" KeyFieldName="Id">
-                    <Columns>
-                        <DxGridDataColumn FieldName="Id" Caption="ID" Width="80px" />
-                        <DxGridDataColumn FieldName="Role" Caption="Role" Width="100px" />
-                        <DxGridDataColumn FieldName="Content" Caption="Content" Width="400px" />
-                        <DxGridDataColumn FieldName="Created" Caption="Created" Width="150px" DisplayFormat="g" />
-                        <DxGridDataColumn FieldName="TokenCount" Caption="Tokens" Width="100px" />
-                        <DxGridDataColumn FieldName="MessageCost" Caption="Cost" Width="100px" DisplayFormat="C" />
-                    </Columns>
-                </DxGrid>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    @{
+                        var index = 0;
+                        foreach (var message in ThreadMessages.OrderBy(m => m.Created))
+                        {
+                            <div class="@(index % 2 == 0 ? "bg-blue" : "bg-green")">
+                                <div><strong>@message.Role</strong> - @message.Created.ToString("g")</div>
+                                <div class="message-content">
+                                    @((MarkupString)FormatMessage(message.Content))
+                                </div>
+                                <div style="font-size: 0.8em; margin-top: 5px;">
+                                    Tokens: @message.TokenCount | Cost: @message.MessageCost.ToString("C")
+                                </div>
+                            </div>
+                            index++;
+                        }
+                    }
+                </div>
             }
             else
             {

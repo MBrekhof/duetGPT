@@ -4,6 +4,7 @@ using duetGPT.Data;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
+using Markdig;
 
 namespace duetGPT.Components.Pages;
 
@@ -123,5 +124,22 @@ public partial class Messages
     {
       ErrorMessage = $"Error deleting thread: {ex.Message}";
     }
+  }
+
+  /// <summary>
+  /// Formats a message's content using Markdig for markdown rendering
+  /// </summary>
+  /// <param name="content">The raw message content</param>
+  /// <returns>HTML formatted content</returns>
+  private string FormatMessage(string content)
+  {
+    if (string.IsNullOrEmpty(content))
+      return string.Empty;
+
+    var pipeline = new MarkdownPipelineBuilder()
+      .UseAdvancedExtensions()
+      .Build();
+
+    return Markdown.ToHtml(content, pipeline);
   }
 }
