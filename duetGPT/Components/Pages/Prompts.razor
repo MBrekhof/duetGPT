@@ -107,10 +107,10 @@
         PageSize="20"
         KeyFieldName="PromptID">
     <Columns>
-        <DxGridDataColumn FieldName="PromptID" Caption="ID" Width="80px" />
-        <DxGridDataColumn FieldName="Title" Caption="Title" Width="200px" />
+        <DxGridDataColumn FieldName="PromptID" Caption="ID" Width="40px" />
+        <DxGridDataColumn FieldName="Title" Caption="Title" Width="300px" />
         <DxGridDataColumn FieldName="Name" Caption="Name" Width="150px" />
-        <DxGridDataColumn FieldName="Content" Caption="Content" Width="400px">
+        <DxGridDataColumn FieldName="Content" Caption="Content" Width="650px">
             <CellDisplayTemplate>
                 @{
                     var prompt = (context.DataItem as Prompt);
@@ -121,14 +121,14 @@
                 }
             </CellDisplayTemplate>
         </DxGridDataColumn>
-        <DxGridDataColumn Width="120px" Caption="Actions">
+        <DxGridDataColumn Width="80px" Caption="Actions">
             <CellDisplayTemplate>
                 @{
                     var prompt = (context.DataItem as Prompt);
                     if (prompt != null)
                     {
-                        <DxButton Text="Edit" IconCssClass="oi oi-pencil" Click="@(async () => await ShowEditPopup(prompt))" RenderStyle="ButtonRenderStyle.Secondary" />
-                        <DxButton Text="Delete" IconCssClass="oi oi-trash" Click="@(async () => await DeletePrompt(prompt.PromptID))" RenderStyle="ButtonRenderStyle.Danger" />
+                        <DxButton Attributes="@(new Dictionary<string, object> { ["title"] = "Edit" })" IconCssClass="oi oi-pencil" Click="@(async () => await ShowEditPopup(prompt))" RenderStyle="ButtonRenderStyle.Secondary" />
+                        <DxButton Attributes="@(new Dictionary<string, object> { ["title"] = "Delete" })" IconCssClass="oi oi-trash" Click="@(async () => await DeletePrompt(prompt.PromptID))" RenderStyle="ButtonRenderStyle.Danger" />
                     }
                 }
             </CellDisplayTemplate>
