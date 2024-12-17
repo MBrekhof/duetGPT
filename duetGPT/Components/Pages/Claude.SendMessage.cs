@@ -29,14 +29,17 @@ namespace duetGPT.Components.Pages
                 running = true;
                 // Force immediate UI refresh
                 await InvokeAsync(StateHasChanged);
+                var client = AnthropicService.GetAnthropicClient();
+
                 // Create thread if it doesn't exist yet
                 if (currentThread == null)
                 {
                     await CreateNewThread();
                     newThread = true;
+                    // Save thread now that we have content
+                    DbContext.Threads.Add(currentThread);
+                    await DbContext.SaveChangesAsync();
                 }
-
-                var client = AnthropicService.GetAnthropicClient();
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
 
@@ -80,9 +83,14 @@ namespace duetGPT.Components.Pages
                     }
                 }
 
+                // Update system messages with document content if available
                 if (knowledgeContent.Any())
                 {
-                    systemPrompt += "\n\n" + string.Join("\n", knowledgeContent);
+                    systemPrompt += "\n\nRelevant document content:\n" + string.Join("\n---\n", knowledgeContent);
+                    systemMessages = new List<SystemMessage>()
+                    {
+                        new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                    };
                 }
 
                 MessageResponse res;
@@ -130,18 +138,19 @@ namespace duetGPT.Components.Pages
                         hasImage = message.Content.Any(c => c is ImageContent);
                     }
 
+                    // Include full chat history in API call
                     var parameters = new MessageParameters
                     {
-                        Messages = new List<Message> { message },
+                        Messages = chatMessages.Concat(new[] { message }).ToList(),
                         Model = modelChosen,
                         MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
                         Stream = !hasImage, // Don't stream if we have an image
                         Temperature = 1.0m,
-                        System = new List<SystemMessage>
-                        {
-                            new SystemMessage(systemPrompt, new CacheControl { Type = CacheControlType.ephemeral })
-                        }
+                        System = systemMessages
                     };
+
+                    // Add user message to chat history
+                    chatMessages.Add(message);
 
                     if ((bool)parameters.Stream)
                     {
@@ -186,7 +195,7 @@ namespace duetGPT.Components.Pages
                 duetUserMessage.MessageCost = CalculateCost(res.Usage.InputTokens, modelChosen);
                 DbContext.SaveChanges();
 
-                // Create and save DuetMessage for assistant response
+                // Create and save assistant message
                 var duetAssistantMessage = new DuetMessage
                 {
                     ThreadId = currentThread.Id,
@@ -197,6 +206,10 @@ namespace duetGPT.Components.Pages
                 };
                 DbContext.Add(duetAssistantMessage);
                 DbContext.SaveChanges();
+
+                // Add assistant response to chat history
+                var assistantMessage = new Message(RoleType.Assistant, markdown, null);
+                chatMessages.Add(assistantMessage);
 
                 // Generate thread title after first message exchange if not already set
                 if (newThread)

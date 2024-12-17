@@ -31,17 +31,15 @@ namespace duetGPT.Components.Pages
                     }
                 }
 
+                // Initialize system messages with the selected prompt
                 systemMessages = new List<SystemMessage>()
                 {
                     new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
                 };
 
-                assistantMessage = new Message
-                {
-                    Role = RoleType.Assistant,
-                    Content = new List<ContentBase> { new TextContent { Text = "Evaluate your think, let the user know if you do not have enough information to answer." } }
-                };
-                chatMessages = new();
+                // Initialize empty message lists
+                chatMessages = new List<Message>();
+                formattedMessages = new List<string>();
 
                 if (userId != null)
                 {
@@ -51,12 +49,8 @@ namespace duetGPT.Components.Pages
                         UserId = userId,
                         StartTime = DateTime.UtcNow,
                         TotalTokens = 0,
-                        Cost = 0,
-                        Title = "New Thread: "+ DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                        Cost = 0
                     };
-
-                    DbContext.Threads.Add(currentThread);
-                    await DbContext.SaveChangesAsync();
                     Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
                 }
                 else
