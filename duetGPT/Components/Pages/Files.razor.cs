@@ -61,15 +61,30 @@ public partial class Files : ComponentBase
       var chunks = CreateOverlappingChunks(sections, tokenLimit);
 
       // Convert chunks to final format
-      var finalChunks = chunks.Select(chunk =>
+      // Keep raw content chunks separate from metadata
+      var finalChunks = new List<string>();
+      foreach (var chunk in chunks)
       {
-        var metadata = new StringBuilder();
-        foreach (var meta in chunk.Metadata)
+        // Use a conservative estimate - assume each word could be 1.5 tokens on average
+        var estimatedTokens = (chunk.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length * 3) / 2;
+
+        if (estimatedTokens > 2000) // Keep well under OpenAI's 8192 limit
         {
-          metadata.AppendLine($"[{meta.Key}: {meta.Value}]");
+          // Further split the chunk if it's too large
+          var words = chunk.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+          var targetWordCount = 1300; // (~2000 estimated tokens)
+
+          for (int i = 0; i < words.Length; i += targetWordCount)
+          {
+            var subChunkWords = words.Skip(i).Take(targetWordCount);
+            finalChunks.Add(string.Join(" ", subChunkWords));
+          }
         }
-        return $"{metadata}\n{chunk.Content}".Trim();
-      }).ToList();
+        else
+        {
+          finalChunks.Add(chunk.Content);
+        }
+      }
 
       _logger.LogInformation($"Successfully split article into {finalChunks.Count} chunks");
       return finalChunks;
@@ -88,7 +103,7 @@ public partial class Files : ComponentBase
       _logger.LogInformation($"Attempting to view document ID: {dataItem.Id}");
       var document = await DbContext.Documents.FindAsync(dataItem.Id);
 
-      if (document != null && document.Content!= null && document.ContentType == "application/pdf")
+      if (document != null && document.Content != null && document.ContentType == "application/pdf")
       {
         selectedPdfContent = document.Content;
         showPdfViewer = true;
@@ -443,12 +458,30 @@ public partial class Files : ComponentBase
           var chunk = chunks[i];
           var wordCount = chunk.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
 
+          // Store metadata separately from the content that gets embedded
+          var metadata = new StringBuilder();
+          if (i < chunks.Count - 1)
+          {
+            metadata.AppendLine($"[section: {i + 1} of {chunks.Count}]");
+            metadata.AppendLine($"[document: {document.FileName}]");
+            if (document.ContentType == "application/pdf")
+            {
+              metadata.AppendLine("[type: PDF]");
+            }
+            else if (document.ContentType.Contains("word"))
+            {
+              metadata.AppendLine("[type: Word Document]");
+            }
+          }
+
           var knowledge = new Knowledge
           {
             Title = $"#{i + 1}_{document.FileName}"[..Math.Min(50, $"#{i + 1}_{document.FileName}".Length)],
             RagContent = chunk,
+            Metadata = metadata.ToString(),
             Tokens = wordCount,
             CreationDate = DateTime.UtcNow,
+            // Only embed the actual content, not the metadata
             VectorDataString = await OpenAIService.GetVectorDataAsync(chunk),
             OwnerId = currentUserId
           };

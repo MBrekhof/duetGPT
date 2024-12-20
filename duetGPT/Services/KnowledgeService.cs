@@ -32,8 +32,8 @@ namespace duetGPT.Services
         // Get embedding for user question
         var questionEmbedding = await _openAIService.GetVectorDataAsync(userQuestion);
 
-        // Build the SQL query with direct vector syntax
-        var sql = "SELECT ragdataid as Id, ragcontent, vectordatastring, " +
+        // Build the SQL query with direct vector syntax and include metadata
+        var sql = "SELECT ragdataid as Id, ragcontent, metadata, vectordatastring, " +
                  "(vectordatastring <-> '" + questionEmbedding + "'::vector) as distance " +
                  "FROM ragdata " +
                  "WHERE vectordatastring IS NOT NULL " +
@@ -44,12 +44,38 @@ namespace duetGPT.Services
             .FromSqlRaw(sql)
             .ToListAsync();
 
-        // Map to KnowledgeResult
+        // Map to KnowledgeResult with metadata
         var relevantKnowledge = queryResults.Select(k => new KnowledgeResult
         {
           Content = k.Ragcontent,
-          Distance = k.distance
+          Distance = k.distance,
+          Metadata = k.Metadata
         }).ToList();
+
+        // Boost relevance scores based on metadata
+        foreach (var knowledge in relevantKnowledge)
+        {
+          if (!string.IsNullOrEmpty(knowledge.Metadata))
+          {
+            // Headers and high importance content get a relevance boost
+            if (knowledge.Metadata.Contains("[type: header]") ||
+                knowledge.Metadata.Contains("[importance: high]"))
+            {
+              knowledge.Distance *= 0.8f; // Reduce distance = increase relevance
+            }
+
+            // Boost content with matching key phrases
+            if (knowledge.Metadata.Contains("key_phrases") &&
+                userQuestion.Split(' ').Any(word =>
+                    knowledge.Metadata.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            {
+              knowledge.Distance *= 0.9f;
+            }
+          }
+        }
+
+        // Re-sort after applying boosts
+        relevantKnowledge = relevantKnowledge.OrderBy(k => k.Distance).ToList();
 
         return relevantKnowledge ?? new List<KnowledgeResult>();
       }

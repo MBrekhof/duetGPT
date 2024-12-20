@@ -34,5 +34,8 @@ namespace duetGPT.Data
 
         [Column("ownerid")]
         public string? OwnerId { get; set; }
+
+        [Column("metadata")]
+        public string? Metadata { get; set; }
     }
 }
