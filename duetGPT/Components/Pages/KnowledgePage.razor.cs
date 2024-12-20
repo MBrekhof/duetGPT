@@ -26,6 +26,7 @@ public partial class KnowledgePage
   private bool PopupVisible { get; set; }
   private bool ContentPopupVisible { get; set; }
   private string SelectedContent { get; set; } = "";
+  private string SelectedMetadata { get; set; } = "";
   private string PopupTitle => KnowledgeData?.RagDataId == 0 ? "New Knowledge" : "Edit Knowledge";
   private Knowledge KnowledgeData { get; set; } = new();
   private string CurrentUserId { get; set; } = "";
@@ -59,9 +60,10 @@ public partial class KnowledgePage
     }
   }
 
-  private void ShowContentPopup(string content)
+  private void ShowContentPopup(string content, string? metadata)
   {
     SelectedContent = content;
+    SelectedMetadata = metadata ?? "";
     ContentPopupVisible = true;
   }
 
@@ -75,7 +77,8 @@ public partial class KnowledgePage
       Tokens = knowledge.Tokens,
       CreationDate = knowledge.CreationDate,
       VectorDataString = knowledge.VectorDataString,
-      OwnerId = knowledge.OwnerId
+      OwnerId = knowledge.OwnerId,
+      Metadata = knowledge.Metadata
     } : new Knowledge
     {
       CreationDate = DateTime.UtcNow,
@@ -101,6 +104,7 @@ public partial class KnowledgePage
           existingItem.Title = KnowledgeData.Title;
           existingItem.RagContent = KnowledgeData.RagContent;
           existingItem.Tokens = KnowledgeData.Tokens;
+          existingItem.Metadata = KnowledgeData.Metadata;
           // Explicitly not updating vectordatastring as per requirements
           Context.Update(existingItem);
         }
@@ -177,7 +181,13 @@ public partial class KnowledgePage
     {
       if (knowledge != null && !string.IsNullOrEmpty(knowledge.RagContent))
       {
-        var vector = await OpenAIService.GetVectorDataAsync(knowledge.RagContent);
+        // Combine content and metadata for embedding
+        var textToEmbed = knowledge.RagContent;
+        if (!string.IsNullOrEmpty(knowledge.Metadata))
+        {
+          textToEmbed += "\n\nMetadata:\n" + knowledge.Metadata;
+        }
+        var vector = await OpenAIService.GetVectorDataAsync(textToEmbed);
         var existingItem = await Context.Set<Knowledge>().FindAsync(knowledge.RagDataId);
         if (existingItem != null)
         {
