@@ -44,5 +44,10 @@
       "*.user",
       "*.suo"
     ]
+  },
+  "instructions": {
+    "web": "when using DevExpress components do a websearch if the component is supported in Blazor and what the most recent version is",
+    "refactor": "try to keep the codebase clean and refactor code that is not up to standard but try to keep the changes small and focused",
+    "database": "never provide code changes that require database changes without confirming with the user first"
   }
 }
