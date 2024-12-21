@@ -55,19 +55,38 @@ namespace duetGPT.Components.Pages
                 DbContext.Add(duetUserMessage);
                 DbContext.SaveChanges();
 
-                // Only associate and get documents if files are selected
+                // Get relevant knowledge from vector database
                 List<string> knowledgeContent = new List<string>();
+                try
+                {
+                    var relevantKnowledge = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
+                    if (relevantKnowledge != null && relevantKnowledge.Any())
+                    {
+                        knowledgeContent.AddRange(relevantKnowledge.Select(k => k.Content));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error retrieving relevant knowledge");
+                }
+
+                // Add document content if files are selected
                 if (SelectedFiles != null && SelectedFiles.Any())
                 {
                     AssociateDocumentsWithThread();
                     var threadDocs = await GetThreadDocumentsContentAsync();
                     if (threadDocs != null && threadDocs.Any())
                     {
-                        knowledgeContent = threadDocs;
+                        knowledgeContent.AddRange(threadDocs);
                     }
                 }
 
-                string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
+                string systemPrompt = @"You are an expert at analyzing user questions and providing accurate, relevant answers.
+Use the following guidelines:
+1. Prioritize information from the provided knowledge base when available
+2. Supplement with your general knowledge when needed
+3. Clearly indicate when you're using provided knowledge versus general knowledge
+4. If the provided knowledge seems insufficient or irrelevant, rely on your general expertise";
 
                 // Get selected prompt content if available
                 if (!string.IsNullOrEmpty(SelectedPrompt))
@@ -83,15 +102,16 @@ namespace duetGPT.Components.Pages
                     }
                 }
 
-                // Update system messages with document content if available
+                // Update system messages with knowledge and document content if available
                 if (knowledgeContent.Any())
                 {
-                    systemPrompt += "\n\nRelevant document content:\n" + string.Join("\n---\n", knowledgeContent);
-                    systemMessages = new List<SystemMessage>()
-                    {
-                        new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-                    };
+                    systemPrompt += "\n\nRelevant knowledge base content:\n" + string.Join("\n---\n", knowledgeContent);
                 }
+
+                systemMessages = new List<SystemMessage>()
+                {
+                    new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                };
 
                 MessageResponse res;
                 string markdown;

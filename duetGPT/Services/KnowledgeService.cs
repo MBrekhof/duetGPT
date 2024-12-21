@@ -76,8 +76,13 @@ namespace duetGPT.Services
 
         // Re-sort after applying boosts
         relevantKnowledge = relevantKnowledge.OrderBy(k => k.Distance).ToList();
+                _logger.LogInformation($"Question: {userQuestion}");
+                foreach (var result in queryResults)
+                {
+                    _logger.LogInformation($"Distance: {result.distance:F3}, Content: {result.Ragcontent.Substring(0, Math.Min(50, result.Ragcontent.Length))}...");
+                }
 
-        return relevantKnowledge ?? new List<KnowledgeResult>();
+                return relevantKnowledge ?? new List<KnowledgeResult>();
       }
       catch (Exception ex)
       {

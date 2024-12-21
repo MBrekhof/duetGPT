@@ -82,7 +82,18 @@ namespace duetGPT.Components.Pages
                 UpdateCostAsync(0);
                 SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
                 await CreateNewThread(); // Start a new thread
-                Logger.LogInformation("Thread cleared and new thread created");
+
+                // Save the new thread to the database immediately
+                if (currentThread != null)
+                {
+                    DbContext.Threads.Add(currentThread);
+                    await DbContext.SaveChangesAsync();
+                    Logger.LogInformation("New thread created and saved with ID {ThreadId}", currentThread.Id);
+                }
+                else
+                {
+                    Logger.LogWarning("Failed to create new thread - currentThread is null");
+                }
             }
             catch (Exception ex)
             {

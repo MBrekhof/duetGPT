@@ -111,23 +111,23 @@ public partial class KnowledgePage
       }
       await Context.SaveChangesAsync();
       await LoadData();
-      ToastService.ShowToast(new ToastOptions()
-      {
-        ProviderName = "KnowledgeToasts",
-        ThemeMode = ToastThemeMode.Dark,
-        RenderStyle = ToastRenderStyle.Success,
-        Title = "Success",
-        Text = "Knowledge embedded successfully"
-      });
-      ToastService.ShowToast(new ToastOptions()
-      {
-        ProviderName = "KnowledgeToasts",
-        ThemeMode = ToastThemeMode.Dark,
-        RenderStyle = ToastRenderStyle.Success,
-        Title = "Success",
-        Text = "Knowledge deleted successfully"
-      });
-      PopupVisible = false;
+      //ToastService.ShowToast(new ToastOptions()
+      //{
+      //  ProviderName = "KnowledgeToasts",
+      //  ThemeMode = ToastThemeMode.Dark,
+      //  RenderStyle = ToastRenderStyle.Success,
+      //  Title = "Success",
+      //  Text = "Knowledge embedded successfully"
+      //});
+      //ToastService.ShowToast(new ToastOptions()
+      //{
+      //  ProviderName = "KnowledgeToasts",
+      //  ThemeMode = ToastThemeMode.Dark,
+      //  RenderStyle = ToastRenderStyle.Success,
+      //  Title = "Success",
+      //  Text = "Knowledge deleted successfully"
+      //});
+      //PopupVisible = false;
       ToastService.ShowToast(new ToastOptions()
       {
         ProviderName = "KnowledgeToasts",
@@ -197,8 +197,16 @@ public partial class KnowledgePage
           await LoadData();
         }
       }
-    }
-    catch (Exception ex)
+            ToastService.ShowToast(new ToastOptions()
+            {
+                ProviderName = "KnowledgeToasts",
+                ThemeMode = ToastThemeMode.Dark,
+                RenderStyle = ToastRenderStyle.Success,
+                Title = "Success",
+                Text = "Knowledge embedded successfully"
+            });
+        }
+        catch (Exception ex)
     {
       ToastService.ShowToast(new ToastOptions()
       {
