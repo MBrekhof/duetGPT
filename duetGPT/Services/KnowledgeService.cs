@@ -27,6 +27,9 @@ namespace duetGPT.Services
 
     public async Task<List<KnowledgeResult>> GetRelevantKnowledgeAsync(string userQuestion)
     {
+      // Maximum allowed absolute distance from 1
+      const double MaxDistanceThreshold = 0.25; // Adjust this value as needed
+
       try
       {
         // Get embedding for user question
@@ -76,13 +79,19 @@ namespace duetGPT.Services
 
         // Re-sort after applying boosts
         relevantKnowledge = relevantKnowledge.OrderBy(k => k.Distance).ToList();
-                _logger.LogInformation($"Question: {userQuestion}");
-                foreach (var result in queryResults)
-                {
-                    _logger.LogInformation($"Distance: {result.distance:F3}, Content: {result.Ragcontent.Substring(0, Math.Min(50, result.Ragcontent.Length))}...");
-                }
 
-                return relevantKnowledge ?? new List<KnowledgeResult>();
+        // Filter out results where absolute distance from 1 exceeds threshold
+        relevantKnowledge = relevantKnowledge
+            .Where(k => Math.Abs(1 - k.Distance) <= MaxDistanceThreshold)
+            .ToList();
+
+        _logger.LogInformation($"Question: {userQuestion}");
+        foreach (var result in queryResults)
+        {
+          _logger.LogInformation($"Distance: {result.distance:F3}, Content: {result.Ragcontent.Substring(0, Math.Min(50, result.Ragcontent.Length))}...");
+        }
+
+        return relevantKnowledge ?? new List<KnowledgeResult>();
       }
       catch (Exception ex)
       {

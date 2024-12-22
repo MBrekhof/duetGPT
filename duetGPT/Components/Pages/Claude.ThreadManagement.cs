@@ -7,13 +7,19 @@ namespace duetGPT.Components.Pages
 {
     public partial class Claude
     {
-        private async Task CreateNewThread()
+        private async Task<DuetThread> CreateNewThread()
         {
             try
             {
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 var user = authState.User;
                 var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (userId == null)
+                {
+                    Logger.LogWarning("Attempted to create a new thread without a valid user ID");
+                    throw new InvalidOperationException("User ID is required to create a new thread");
+                }
 
                 string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
 
@@ -41,23 +47,22 @@ namespace duetGPT.Components.Pages
                 chatMessages = new List<Message>();
                 formattedMessages = new List<string>();
 
-                if (userId != null)
+                Logger.LogInformation("Creating new thread for user {UserId}", userId);
+                var thread = new DuetThread
                 {
-                    Logger.LogInformation("Creating new thread for user {UserId}", userId);
-                    currentThread = new DuetThread
-                    {
-                        UserId = userId,
-                        StartTime = DateTime.UtcNow,
-                        TotalTokens = 0,
-                        Cost = 0
-                    };
-                    Logger.LogInformation("New thread created with ID {ThreadId}", currentThread.Id);
-                }
-                else
-                {
-                    Logger.LogWarning("Attempted to create a new thread without a valid user ID");
-                    throw new InvalidOperationException("User ID is required to create a new thread");
-                }
+                    UserId = userId,
+                    StartTime = DateTime.UtcNow,
+                    TotalTokens = 0,
+                    Cost = 0,
+                    Title = "Not yet created" // Set initial title
+                };
+
+                // Save the thread immediately
+                DbContext.Threads.Add(thread);
+                await DbContext.SaveChangesAsync();
+
+                Logger.LogInformation("New thread created with ID {ThreadId}", thread.Id);
+                return thread;
             }
             catch (DbUpdateException ex)
             {
@@ -81,19 +86,11 @@ namespace duetGPT.Components.Pages
                 UpdateTokensAsync(0);
                 UpdateCostAsync(0);
                 SelectedFiles = Enumerable.Empty<int>(); // Clear selected files
-                await CreateNewThread(); // Start a new thread
 
-                // Save the new thread to the database immediately
-                if (currentThread != null)
-                {
-                    DbContext.Threads.Add(currentThread);
-                    await DbContext.SaveChangesAsync();
-                    Logger.LogInformation("New thread created and saved with ID {ThreadId}", currentThread.Id);
-                }
-                else
-                {
-                    Logger.LogWarning("Failed to create new thread - currentThread is null");
-                }
+                // Create and save new thread
+                currentThread = await CreateNewThread(); // CreateNewThread now handles database save
+                newThread = true; // Mark as new thread to ensure title generation after first message
+                Logger.LogInformation("Thread cleared and new thread created with ID {ThreadId}", currentThread.Id);
             }
             catch (Exception ex)
             {

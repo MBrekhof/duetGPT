@@ -34,11 +34,13 @@ namespace duetGPT.Components.Pages
                 // Create thread if it doesn't exist yet
                 if (currentThread == null)
                 {
-                    await CreateNewThread();
-                    newThread = true;
-                    // Save thread now that we have content
-                    DbContext.Threads.Add(currentThread);
-                    await DbContext.SaveChangesAsync();
+                    currentThread = await CreateNewThread();
+                    newThread = true; // Set flag to generate title after first message exchange
+                }
+                // If thread exists but has default title, mark it for title generation
+                else if (string.IsNullOrEmpty(currentThread.Title) || currentThread.Title == "Not yet created")
+                {
+                    newThread = true; // Ensure title gets generated after this message exchange
                 }
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
