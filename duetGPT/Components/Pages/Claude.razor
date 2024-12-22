@@ -127,6 +127,12 @@
         height: auto;
         object-fit: contain;
     }
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
 </style>
 
 <DxToastProvider Name="ClaudePage"
@@ -184,6 +190,10 @@
             <div>@Tokens</div>
             <div class="info-label">Cost:</div>
             <div>$@Cost.ToString("F4")</div>
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableWebSearch" />
+                <span>Enable Web Search</span>
+            </div>
         </div>
         <div class="info-box">
             <div class="info-label">Select Files:</div>

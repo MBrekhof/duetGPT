@@ -7,6 +7,7 @@ using duetGPT.Services;
 using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Tavily;
 
 namespace duetGPT.Components.Pages
 {
@@ -80,6 +81,40 @@ namespace duetGPT.Components.Pages
                     if (threadDocs != null && threadDocs.Any())
                     {
                         knowledgeContent.AddRange(threadDocs);
+                    }
+                }
+
+                // Perform web search if enabled
+                if (EnableWebSearch)
+                {
+                    try
+                    {
+                        var tavilyApiKey = Configuration["Tavily:ApiKey"];
+                        if (!string.IsNullOrEmpty(tavilyApiKey))
+                        {
+                            using var tavilyClient = new TavilyClient();
+                            var searchResponse = await tavilyClient.SearchAsync(
+                                apiKey: tavilyApiKey,
+                                query: textInput);
+
+                            if (searchResponse?.Results != null)
+                            {
+                                var webResults = searchResponse.Results
+                                    .OrderByDescending(r => r.Score)
+                                    .Take(3) // Limit to top 3 most relevant results
+                                    .Select(r => $"Source: {r.Url}\nTitle: {r.Title}\nContent: {r.Content}");
+
+                                knowledgeContent.Add("\nWeb Search Results:\n" + string.Join("\n---\n", webResults));
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogWarning("Tavily API key not found in configuration");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError(ex, "Error performing web search");
                     }
                 }
 

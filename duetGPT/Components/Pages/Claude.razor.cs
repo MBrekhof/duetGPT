@@ -5,6 +5,7 @@ using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Tavily;
 
 namespace duetGPT.Components.Pages
 {
@@ -14,7 +15,7 @@ namespace duetGPT.Components.Pages
         [Inject] private AnthropicService AnthropicService { get; set; }
         [Inject] private ApplicationDbContext DbContext { get; set; }
         [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
-
+        [Inject] private IConfiguration Configuration { get; set; }
 
         private string textInput = "";
         private List<Message> chatMessages = new();
@@ -22,6 +23,7 @@ namespace duetGPT.Components.Pages
         private bool running;
         private bool newThread = false;
         private DuetThread currentThread;
+        private bool EnableWebSearch { get; set; }
 
         // Messages formatted for display
         private List<string> formattedMessages = new();
