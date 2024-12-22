@@ -103,14 +103,24 @@ public partial class Messages
     {
       if (ThreadToDelete == null) return;
 
+      // Get a fresh tracked instance of the thread from the database
+      var threadToDelete = await Context.Threads
+          .FirstOrDefaultAsync(t => t.Id == ThreadToDelete.Id);
+
+      if (threadToDelete == null)
+      {
+        ErrorMessage = "Thread not found";
+        return;
+      }
+
       // Delete associated messages first
       var messages = await Context.Messages
-          .Where(m => m.ThreadId == ThreadToDelete.Id)
+          .Where(m => m.ThreadId == threadToDelete.Id)
           .ToListAsync();
       Context.Messages.RemoveRange(messages);
 
       // Delete the thread
-      Context.Threads.Remove(ThreadToDelete);
+      Context.Threads.Remove(threadToDelete);
       await Context.SaveChangesAsync();
 
       // Remove from grid data source

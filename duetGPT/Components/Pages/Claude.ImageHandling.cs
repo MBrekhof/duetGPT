@@ -14,8 +14,14 @@ namespace duetGPT.Components.Pages
     private string? CurrentImagePath { get; set; }  // Store file path instead of byte array
     private string? CurrentImageType { get; set; }
     private bool IsNewThreadPopupVisible { get; set; }
+    private bool IsImagePopupVisible { get; set; }
     private const int MaxImageSize = 20 * 1024 * 1024; // 20MB limit
     private const string TempImageFolder = "TempImages";
+
+    private void ShowImagePopup()
+    {
+      IsImagePopupVisible = true;
+    }
 
     private async Task HandleImageUpload(InputFileChangeEventArgs e)
     {
@@ -49,8 +55,8 @@ namespace duetGPT.Components.Pages
           CurrentImagePath = filePath;
           CurrentImageType = file.ContentType;
 
-          // Create resized version for UI display
-          var resizedImage = await file.RequestImageFileAsync("image/*", 800, 600);
+          // Create resized version for UI display with max dimension of 800px while maintaining aspect ratio
+          var resizedImage = await file.RequestImageFileAsync(file.ContentType, 800, 800);
           using (var resizedStream = resizedImage.OpenReadStream(MaxImageSize))
           {
             var buffer = new byte[resizedImage.Size];
@@ -96,6 +102,7 @@ namespace duetGPT.Components.Pages
       ImageUrl = null;
       CurrentImagePath = null;
       CurrentImageType = null;
+      IsImagePopupVisible = false;
       await InvokeAsync(StateHasChanged);
     }
 

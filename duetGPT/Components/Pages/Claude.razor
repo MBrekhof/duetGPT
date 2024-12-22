@@ -105,31 +105,27 @@
         border-radius: 5px;
         padding: 10px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        height: 300px;
+        cursor: pointer;
     }
     .uploaded-image {
+        max-width: 100%;
+        max-height: 100%;
         width: auto;
         height: auto;
-        max-width: 100%;
-        max-height: 200px;
-        object-fit: cover;
+        object-fit: contain;
         border-radius: 5px;
         margin: 0;
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-        transform: translateZ(0) scale(1);
-        backface-visibility: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        will-change: transform, filter;
-        filter: brightness(1) contrast(1.02);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .uploaded-image:hover {
-        transform: translateZ(0) scale(1.03);
-        filter: brightness(1.05) contrast(1.05);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     .image-upload {
         width: 100%;
+    }
+    .popup-image {
+        max-width: 90vw;
+        max-height: 80vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
     }
 </style>
 
@@ -143,9 +139,9 @@
 <div class="header-container">
     <div class="title">Chat Application</div>
     <div class="combobox-container">
-        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
+        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton="false">
             <Buttons>
-                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
             </Buttons>
         </DxComboBox>
         <DxComboBox Data="@Prompts" 
@@ -154,7 +150,7 @@
                     ValueFieldName="Name"
                     NullText="Default">
             <Buttons>
-                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
             </Buttons>
         </DxComboBox>
     </div>
@@ -203,7 +199,7 @@
             <InputFile class="image-upload" OnChange="@HandleImageUpload" accept="image/*" />
             @if (!string.IsNullOrEmpty(ImageUrl))
             {
-                <div class="image-container">
+                <div class="image-container" @onclick="ShowImagePopup">
                     <img src="@ImageUrl" class="uploaded-image" alt="Uploaded image" decoding="async" />
                 </div>
             }
@@ -227,4 +223,24 @@
         <button class="btn btn-secondary" @onclick="@(() => IsNewThreadPopupVisible = false)">Cancel</button>
         <button class="btn btn-danger" @onclick="ConfirmNewThread">Confirm</button>
     </FooterTemplate>
+</DxPopup>
+
+<DxPopup @bind-Visible="@IsImagePopupVisible"
+         ShowFooter="false"
+         CloseOnEscape="true"
+         CloseOnOutsideClick="true"
+         Width="auto"
+         Height="auto">
+    <HeaderTemplate>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span>Image Preview</span>
+            <button type="button" class="btn-close" @onclick="@(() => IsImagePopupVisible = false)"></button>
+        </div>
+    </HeaderTemplate>
+    <BodyTemplate>
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" class="popup-image" alt="Full size image" />
+        }
+    </BodyTemplate>
 </DxPopup>
