@@ -7,6 +7,7 @@ namespace duetGPT.Services
   public interface IKnowledgeService
   {
     Task<List<KnowledgeResult>> GetRelevantKnowledgeAsync(string userQuestion);
+    Task<Knowledge> SaveKnowledgeAsync(string content, string title, string metadata, string userId);
   }
 
   public class KnowledgeService : IKnowledgeService
@@ -97,6 +98,35 @@ namespace duetGPT.Services
       {
         _logger.LogError(ex, "Error getting relevant knowledge");
         return new List<KnowledgeResult>();
+      }
+    }
+
+    public async Task<Knowledge> SaveKnowledgeAsync(string content, string title, string metadata, string userId)
+    {
+      try
+      {
+        // Get embedding for the content
+        var embedding = await _openAIService.GetVectorDataAsync(content);
+
+        var knowledge = new Knowledge
+        {
+          RagContent = content,
+          Title = title,
+          Metadata = metadata,
+          OwnerId = userId,
+          VectorDataString = embedding,
+          CreationDate = DateTime.UtcNow
+        };
+
+        _dbContext.Add(knowledge);
+        await _dbContext.SaveChangesAsync();
+
+        return knowledge;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error saving knowledge");
+        throw;
       }
     }
   }

@@ -6,7 +6,14 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 <style>
+    .btn-yellow {
+        background-color: #ffd700 !important;
+        border-color: #ffd700 !important;
+        color: black !important;
+    }
     .header-container {
         display: flex;
         justify-content: space-between;
@@ -145,6 +152,9 @@
 <div class="header-container">
     <div class="title">Chat Application</div>
     <div class="combobox-container">
+        <button class="btn btn-yellow" @onclick="SummarizeThread" disabled="@running" title="Save thread summary to knowledge base">
+            <i class="fas fa-save"></i>
+        </button>
         <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton="false">
             <Buttons>
                 <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
