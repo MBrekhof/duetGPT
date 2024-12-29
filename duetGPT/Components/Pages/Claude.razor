@@ -2,10 +2,18 @@
 @page "/claude"
 @using Anthropic
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @rendermode InteractiveServer
 @attribute [Authorize]
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 <style>
+    .btn-yellow {
+        background-color: #ffd700 !important;
+        border-color: #ffd700 !important;
+        color: black !important;
+    }
     .header-container {
         display: flex;
         justify-content: space-between;
@@ -25,6 +33,9 @@
         display: flex;
         justify-content: center;
         align-items: center;
+        z-index: 1000;
+        background-color: white;
+        padding: 10px;
     }
     .input-box {
         width: 800px;
@@ -90,14 +101,63 @@
         gap: 10px;
         align-items: center;
     }
+    .image-container {
+        margin-top: 10px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow: hidden;
+        background: #f5f5f5;
+        border-radius: 5px;
+        padding: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        height: 300px;
+        cursor: pointer;
+    }
+    .uploaded-image {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 5px;
+        margin: 0;
+    }
+    .image-upload {
+        width: 100%;
+    }
+    .popup-image {
+        max-width: 90vw;
+        max-height: 80vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+    }
+    .toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
 </style>
+
+<DxToastProvider Name="ClaudePage"
+                 MaxToastCount="5"
+                 AnimationType="ToastAnimationType.Slide"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 DisplayTime="TimeSpan.FromSeconds(3)"
+                 Width="320px" />
 
 <div class="header-container">
     <div class="title">Chat Application</div>
     <div class="combobox-container">
-        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton=false>
+        <button class="btn btn-yellow" @onclick="SummarizeThread" disabled="@running" title="Save thread summary to knowledge base">
+            <i class="fas fa-save"></i>
+        </button>
+        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton="false">
             <Buttons>
-                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
             </Buttons>
         </DxComboBox>
         <DxComboBox Data="@Prompts" 
@@ -106,7 +166,7 @@
                     ValueFieldName="Name"
                     NullText="Default">
             <Buttons>
-                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left"/>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
             </Buttons>
         </DxComboBox>
     </div>
@@ -140,6 +200,10 @@
             <div>@Tokens</div>
             <div class="info-label">Cost:</div>
             <div>$@Cost.ToString("F4")</div>
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableWebSearch" />
+                <span>Enable Web Search</span>
+            </div>
         </div>
         <div class="info-box">
             <div class="info-label">Select Files:</div>
@@ -150,11 +214,53 @@
                        SelectionMode="ListBoxSelectionMode.Multiple"
                        ShowCheckboxes="true" SizeMode="SizeMode.Small"  ListBoxHeight="@null"/>
         </div>
+        <div class="info-box">
+            <div class="info-label">Upload Image:</div>
+            <InputFile class="image-upload" OnChange="@HandleImageUpload" accept="image/*" />
+            @if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                <div class="image-container" @onclick="ShowImagePopup">
+                    <img src="@ImageUrl" class="uploaded-image" alt="Uploaded image" decoding="async" />
+                </div>
+            }
+        </div>
     </div>
 </div>
 
 <div class="input-container">
     <textarea class="input-box" @bind="textInput" rows="3"></textarea>
-    <button class="btn btn-primary" @onclick="SendClick">&#x2192;</button>
-    <button class="btn btn-danger" @onclick="ClearThread" style="font-weight: bold;">New Thread</button>  
+    <button class="btn btn-primary" @onclick="SendClick" disabled="@running">&#x2192;</button>
+    <button class="btn btn-danger" @onclick="ShowNewThreadConfirmation" disabled="@running" style="font-weight: bold;">New Thread</button>  
 </div>
+
+<DxPopup HeaderText="Confirm New Thread"
+         @bind-Visible="@IsNewThreadPopupVisible"
+         ShowFooter="true">
+    <BodyTemplate>
+        Are you sure you want to start a new thread? This will clear the current conversation.
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-secondary" @onclick="@(() => IsNewThreadPopupVisible = false)">Cancel</button>
+        <button class="btn btn-danger" @onclick="ConfirmNewThread">Confirm</button>
+    </FooterTemplate>
+</DxPopup>
+
+<DxPopup @bind-Visible="@IsImagePopupVisible"
+         ShowFooter="false"
+         CloseOnEscape="true"
+         CloseOnOutsideClick="true"
+         Width="auto"
+         Height="auto">
+    <HeaderTemplate>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <span>Image Preview</span>
+            <button type="button" class="btn-close" @onclick="@(() => IsImagePopupVisible = false)"></button>
+        </div>
+    </HeaderTemplate>
+    <BodyTemplate>
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" class="popup-image" alt="Full size image" />
+        }
+    </BodyTemplate>
+</DxPopup>

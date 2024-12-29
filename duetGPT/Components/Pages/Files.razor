@@ -10,22 +10,36 @@
 @using DevExpress.XtraRichEdit
 @using System.Text
 @using DevExpress.Blazor
+@using DevExpress.Blazor.PdfViewer
+@using Microsoft.AspNetCore.Mvc.ViewFeatures
+
+
 @inject ApplicationDbContext DbContext
+
+
 @inject UserManager<ApplicationUser> UserManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ILogger<Files> Logger
 @inject OpenAIService OpenAIService
+@inject IToastNotificationService ToastService
 @rendermode InteractiveServer
-@attribute [Authorize] 
+@attribute [Authorize]
+
+<DxToastProvider Name="FilesPage"
+                 MaxToastCount="5"
+                 AnimationType="ToastAnimationType.Slide"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 DisplayTime="TimeSpan.FromSeconds(3)"
+                 Width="320px"/>
 
 <h3>Files</h3>
 
 <p>Total number of documents: @Documents.Count</p>
 
-<DxGrid @ref="Grid" 
-        Data="@Documents" 
-        ShowFilterRow="true" 
-        ShowPager="true" 
+<DxGrid @ref="Grid"
+        Data="@Documents"
+        ShowFilterRow="true"
+        ShowPager="true"
         PageSize="10">
     <Columns>
         <DxGridCommandColumn Width="240px">
@@ -36,14 +50,24 @@
                    var isEmbedding = currentlyEmbeddingId == doc.Id;
                    var hasSuccess = embeddingSuccess.TryGetValue(doc.Id, out var success);
                }
-               <DxButton Text="@(isEmbedding ? "Embedding..." : "Embed")"
+               <DxButton IconCssClass="@(isEmbedding ? "oi oi-clock" : "oi oi-code")"
                         RenderStyle="ButtonRenderStyle.Primary"
                         Click="@(() => Embed_Click(doc))"
                         Enabled="@(!isEmbedding)"
-                        CssClass="@($"me-2 {(hasSuccess ? (success ? "btn-success" : "btn-danger") : "")}")"/>
-               <DxButton Text="Delete"
+                        CssClass="@($"me-2 {(hasSuccess ? (success ? "btn-success" : "btn-danger") : "")}")"
+                        Attributes="@(new Dictionary<string, object> { ["title"] = isEmbedding ? "Embedding..." : "Embed" })"/>
+               @if (doc.ContentType == "application/pdf")
+               {
+                   <DxButton IconCssClass="oi oi-eye"
+                            RenderStyle="ButtonRenderStyle.Secondary"
+                            Click="@(() => View_Click(doc))"
+                            CssClass="me-2"
+                            Attributes="@(new Dictionary<string, object> { ["title"] = "View PDF" })"/>
+               }
+               <DxButton IconCssClass="oi oi-trash"
                         RenderStyle="ButtonRenderStyle.Danger"
-                        Click="@(() => Delete_Click(doc))"/>
+                        Click="@(() => Delete_Click(doc))"
+                        Attributes="@(new Dictionary<string, object> { ["title"] = "Delete" })"/>
              </div>
           </CellDisplayTemplate>
         </DxGridCommandColumn>
@@ -55,3 +79,19 @@
         <DxGridDataColumn FieldName="OwnerName" Caption="Owner" />
     </Columns>
 </DxGrid>
+
+@if (showPdfViewer && selectedPdfContent != null)
+{
+    <DxPopup @bind-Visible="@showPdfViewer" HeaderText="PDF" Height="80%" Width="60%">
+         <BodyTemplate Context="PopupContext">
+    <div class="mt-4">
+        <h4>PDF Viewer</h4>
+
+        <DxPdfViewer CssClass="w-100 pdf-viewer"
+                     DocumentContent="@selectedPdfContent" 
+                     IsSinglePagePreview="true"
+                     />
+    </div>
+    </BodyTemplate>
+    </DxPopup>
+}

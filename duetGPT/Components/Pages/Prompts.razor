@@ -1,18 +1,12 @@
 @page "/prompts"
-@using Microsoft.EntityFrameworkCore
 @using DevExpress.Blazor
 @using duetGPT.Data
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Authorization
 @rendermode InteractiveServer
-@inject ApplicationDbContext Context
-@inject AuthenticationStateProvider AuthenticationStateProvider
-@attribute [Authorize]
 
 <h3>Prompts</h3>
 
 <div class="mb-3">
-    <DxButton Text="New Prompt" IconCssClass="oi oi-plus" Click="@(() => ShowEditPopup(null))" />
+    <DxButton Text="New Prompt" IconCssClass="oi oi-plus" Click="@(async () => await ShowEditPopup(null))" />
 </div>
 
 <DxGrid Data="@GridDataSource"
@@ -21,16 +15,29 @@
         PageSize="20"
         KeyFieldName="PromptID">
     <Columns>
-        <DxGridDataColumn FieldName="PromptID" Caption="ID" Width="80px" />
-        <DxGridDataColumn FieldName="Title" Caption="Title" Width="200px" />
+        <DxGridDataColumn FieldName="PromptID" Caption="ID" Width="40px" />
+        <DxGridDataColumn FieldName="Title" Caption="Title" Width="300px" />
         <DxGridDataColumn FieldName="Name" Caption="Name" Width="150px" />
-        <DxGridDataColumn FieldName="Content" Caption="Content" Width="400px" />
-        <DxGridDataColumn Width="120px" Caption="Actions">
+        <DxGridDataColumn FieldName="Content" Caption="Content" Width="650px">
             <CellDisplayTemplate>
                 @{
                     var prompt = (context.DataItem as Prompt);
-                    <DxButton Text="Edit" IconCssClass="oi oi-pencil" Click="@(() => ShowEditPopup(prompt))" RenderStyle="ButtonRenderStyle.Secondary" />
-                    <DxButton Text="Delete" IconCssClass="oi oi-trash" Click="@(() => DeletePrompt(prompt.PromptID))" RenderStyle="ButtonRenderStyle.Danger" />
+                    if (prompt?.Content != null)
+                    {
+                        @((MarkupString)RenderMarkdown(prompt.Content))
+                    }
+                }
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn Width="80px" Caption="Actions">
+            <CellDisplayTemplate>
+                @{
+                    var prompt = (context.DataItem as Prompt);
+                    if (prompt != null)
+                    {
+                        <DxButton Attributes="@(new Dictionary<string, object> { ["title"] = "Edit" })" IconCssClass="oi oi-pencil" Click="@(async () => await ShowEditPopup(prompt))" RenderStyle="ButtonRenderStyle.Secondary" />
+                        <DxButton Attributes="@(new Dictionary<string, object> { ["title"] = "Delete" })" IconCssClass="oi oi-trash" Click="@(async () => await DeletePrompt(prompt.PromptID))" RenderStyle="ButtonRenderStyle.Danger" />
+                    }
                 }
             </CellDisplayTemplate>
         </DxGridDataColumn>
@@ -59,85 +66,25 @@
         </div>
         <div class="row">
             <div class="col">
-                <DxButton Text="Save" Click="@SavePrompt" RenderStyle="ButtonRenderStyle.Primary" />
+                <DxButton Text="Save" Click="@(async () => await SavePrompt())" RenderStyle="ButtonRenderStyle.Primary" />
                 <DxButton Text="Cancel" Click="@(() => PopupVisible = false)" RenderStyle="ButtonRenderStyle.Secondary" />
             </div>
         </div>
     </Content>
 </DxPopup>
 
-@code {
-    private List<Prompt> GridDataSource { get; set; } = new();
-    private bool PopupVisible { get; set; }
-    private string PopupTitle => CurrentPrompt?.PromptID == 0 ? "New Prompt" : "Edit Prompt";
-    private Prompt CurrentPrompt { get; set; } = new();
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadData();
+<style>
+    /* Add some basic styling for markdown content */
+    :deep(.markdown-content) {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
     }
-
-    private async Task LoadData()
-    {
-        try
-        {
-            GridDataSource = await Context.Set<Prompt>().ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching prompts: {ex.Message}");
-        }
+    :deep(.markdown-content p) {
+        margin: 0;
     }
-
-    private void ShowEditPopup(Prompt? prompt)
-    {
-        CurrentPrompt = prompt != null ? new Prompt
-        {
-            PromptID = prompt.PromptID,
-            Title = prompt.Title,
-            Name = prompt.Name,
-            Content = prompt.Content
-        } : new Prompt();
-        PopupVisible = true;
+    :deep(.markdown-content code) {
+        background-color: #f5f5f5;
+        padding: 2px 4px;
+        border-radius: 4px;
     }
-
-    private async Task SavePrompt()
-    {
-        try
-        {
-            if (CurrentPrompt.PromptID == 0)
-            {
-                Context.Add(CurrentPrompt);
-            }
-            else
-            {
-                Context.Update(CurrentPrompt);
-            }
-            await Context.SaveChangesAsync();
-            await LoadData();
-            PopupVisible = false;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error saving prompt: {ex.Message}");
-        }
-    }
-
-    private async Task DeletePrompt(int promptId)
-    {
-        try
-        {
-            var prompt = await Context.Set<Prompt>().FindAsync(promptId);
-            if (prompt != null)
-            {
-                Context.Remove(prompt);
-                await Context.SaveChangesAsync();
-                await LoadData();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error deleting prompt: {ex.Message}");
-        }
-    }
-}
+</style>

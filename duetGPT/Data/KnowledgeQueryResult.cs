@@ -33,5 +33,11 @@ namespace duetGPT.Data
     /// Note: Lowercase to match SQL alias.
     /// </summary>
     public float distance { get; set; }
+
+    /// <summary>
+    /// Gets or sets the metadata associated with the knowledge entry.
+    /// Contains structured information about the content type, importance, and key phrases.
+    /// </summary>
+    public string? Metadata { get; set; }
   }
 }

@@ -7,6 +7,7 @@ namespace duetGPT.Services
   public interface IKnowledgeService
   {
     Task<List<KnowledgeResult>> GetRelevantKnowledgeAsync(string userQuestion);
+    Task<Knowledge> SaveKnowledgeAsync(string content, string title, string metadata, string userId);
   }
 
   public class KnowledgeService : IKnowledgeService
@@ -27,13 +28,16 @@ namespace duetGPT.Services
 
     public async Task<List<KnowledgeResult>> GetRelevantKnowledgeAsync(string userQuestion)
     {
+      // Maximum allowed absolute distance from 1
+      const double MaxDistanceThreshold = 0.25; // Adjust this value as needed
+
       try
       {
         // Get embedding for user question
         var questionEmbedding = await _openAIService.GetVectorDataAsync(userQuestion);
 
-        // Build the SQL query with direct vector syntax
-        var sql = "SELECT ragdataid as Id, ragcontent, vectordatastring, " +
+        // Build the SQL query with direct vector syntax and include metadata
+        var sql = "SELECT ragdataid as Id, ragcontent, metadata, vectordatastring, " +
                  "(vectordatastring <-> '" + questionEmbedding + "'::vector) as distance " +
                  "FROM ragdata " +
                  "WHERE vectordatastring IS NOT NULL " +
@@ -44,12 +48,49 @@ namespace duetGPT.Services
             .FromSqlRaw(sql)
             .ToListAsync();
 
-        // Map to KnowledgeResult
+        // Map to KnowledgeResult with metadata
         var relevantKnowledge = queryResults.Select(k => new KnowledgeResult
         {
           Content = k.Ragcontent,
-          Distance = k.distance
+          Distance = k.distance,
+          Metadata = k.Metadata
         }).ToList();
+
+        // Boost relevance scores based on metadata
+        foreach (var knowledge in relevantKnowledge)
+        {
+          if (!string.IsNullOrEmpty(knowledge.Metadata))
+          {
+            // Headers and high importance content get a relevance boost
+            if (knowledge.Metadata.Contains("[type: header]") ||
+                knowledge.Metadata.Contains("[importance: high]"))
+            {
+              knowledge.Distance *= 0.8f; // Reduce distance = increase relevance
+            }
+
+            // Boost content with matching key phrases
+            if (knowledge.Metadata.Contains("key_phrases") &&
+                userQuestion.Split(' ').Any(word =>
+                    knowledge.Metadata.Contains(word, StringComparison.OrdinalIgnoreCase)))
+            {
+              knowledge.Distance *= 0.9f;
+            }
+          }
+        }
+
+        // Re-sort after applying boosts
+        relevantKnowledge = relevantKnowledge.OrderBy(k => k.Distance).ToList();
+
+        // Filter out results where absolute distance from 1 exceeds threshold
+        relevantKnowledge = relevantKnowledge
+            .Where(k => Math.Abs(1 - k.Distance) <= MaxDistanceThreshold)
+            .ToList();
+
+        _logger.LogInformation($"Question: {userQuestion}");
+        foreach (var result in queryResults)
+        {
+          _logger.LogInformation($"Distance: {result.distance:F3}, Content: {result.Ragcontent.Substring(0, Math.Min(50, result.Ragcontent.Length))}...");
+        }
 
         return relevantKnowledge ?? new List<KnowledgeResult>();
       }
@@ -57,6 +98,35 @@ namespace duetGPT.Services
       {
         _logger.LogError(ex, "Error getting relevant knowledge");
         return new List<KnowledgeResult>();
+      }
+    }
+
+    public async Task<Knowledge> SaveKnowledgeAsync(string content, string title, string metadata, string userId)
+    {
+      try
+      {
+        // Get embedding for the content
+        var embedding = await _openAIService.GetVectorDataAsync(content);
+
+        var knowledge = new Knowledge
+        {
+          RagContent = content,
+          Title = title,
+          Metadata = metadata,
+          OwnerId = userId,
+          VectorDataString = embedding,
+          CreationDate = DateTime.UtcNow
+        };
+
+        _dbContext.Add(knowledge);
+        await _dbContext.SaveChangesAsync();
+
+        return knowledge;
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Error saving knowledge");
+        throw;
       }
     }
   }

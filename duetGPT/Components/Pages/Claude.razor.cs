@@ -5,10 +5,7 @@ using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using DevExpress.Pdf;
-using DevExpress.XtraRichEdit;
-using System.Text;
+using Tavily;
 
 namespace duetGPT.Components.Pages
 {
@@ -18,18 +15,47 @@ namespace duetGPT.Components.Pages
         [Inject] private AnthropicService AnthropicService { get; set; }
         [Inject] private ApplicationDbContext DbContext { get; set; }
         [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
-        [Inject] private ErrorPopupService ErrorService { get; set; }
+        [Inject] private IConfiguration Configuration { get; set; }
 
-        string textInput = "";
-        List<Message> chatMessages = new();
-        List<Message> userMessages = new();
-        List<SystemMessage> systemMessages = new();
-        Message assistantMessage = new();
-        private List<String> formattedMessages = new();
-        bool running;
-        bool newThread = false;
-
+        private string textInput = "";
+        private List<Message> chatMessages = new();
+        private List<SystemMessage> systemMessages = new();
+        private bool running;
+        private bool newThread = false;
         private DuetThread currentThread;
+        private bool EnableWebSearch { get; set; }
+
+        // Messages formatted for display
+        private List<string> formattedMessages = new();
+
+        /// <summary>
+        /// Loads messages from the database for the current thread and converts them to Anthropic Message format
+        /// </summary>
+        private async Task LoadMessagesFromDb()
+        {
+            if (currentThread == null) return;
+
+            chatMessages.Clear();
+
+            var dbMessages = await DbContext.Messages
+                .Where(m => m.ThreadId == currentThread.Id)
+                .OrderBy(m => m.Id)
+                .ToListAsync();
+
+            foreach (var msg in dbMessages)
+            {
+                var role = msg.Role == "user" ? RoleType.User : RoleType.Assistant;
+                chatMessages.Add(new Message(role, msg.Content, null));
+            }
+
+            // Rebuild formatted messages for display
+            formattedMessages.Clear();
+            var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
+            foreach (var msg in dbMessages)
+            {
+                formattedMessages.Add(Markdown.ToHtml(msg.Content, pipeline));
+            }
+        }
 
         public List<Document> AvailableFiles { get; set; } = new List<Document>();
         public IEnumerable<int> SelectedFiles { get; set; } = Enumerable.Empty<int>();
@@ -66,6 +92,10 @@ namespace duetGPT.Components.Pages
 
         protected override async Task OnInitializedAsync()
         {
+            if (currentThread != null)
+            {
+                await LoadMessagesFromDb();
+            }
         }
 
         protected override async Task OnAfterRenderAsync(bool firstRender)

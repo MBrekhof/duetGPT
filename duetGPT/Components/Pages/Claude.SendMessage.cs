@@ -1,13 +1,13 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
-using Markdig;
+using DevExpress.Blazor;
 using duetGPT.Data;
 using duetGPT.Services;
-using Microsoft.EntityFrameworkCore;
-using Pgvector;
-using Pgvector.EntityFrameworkCore;
+using Markdig;
 using Microsoft.AspNetCore.Components;
+using Microsoft.EntityFrameworkCore;
+using Tavily;
 
 namespace duetGPT.Components.Pages
 {
@@ -27,21 +27,24 @@ namespace duetGPT.Components.Pages
             }
             try
             {
+                running = true;
+                // Force immediate UI refresh
+                await InvokeAsync(StateHasChanged);
+                var client = AnthropicService.GetAnthropicClient();
+
                 // Create thread if it doesn't exist yet
                 if (currentThread == null)
                 {
-                    await CreateNewThread();
-                    newThread = true;
+                    currentThread = await CreateNewThread();
+                    newThread = true; // Set flag to generate title after first message exchange
                 }
-
-                var client = AnthropicService.GetAnthropicClient();
+                // If thread exists but has default title, mark it for title generation
+                else if (string.IsNullOrEmpty(currentThread.Title) || currentThread.Title == "Not yet created")
+                {
+                    newThread = true; // Ensure title gets generated after this message exchange
+                }
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
-                running = true;
-
-                var userMessage = new Message(
-                  RoleType.User, textInput, null
-               );
 
                 // Create and save DuetMessage for user input
                 var duetUserMessage = new DuetMessage
@@ -55,63 +58,193 @@ namespace duetGPT.Components.Pages
                 DbContext.Add(duetUserMessage);
                 DbContext.SaveChanges();
 
-                userMessages.Add(userMessage);
-                chatMessages = userMessages;
-                AssociateDocumentsWithThread();
-                var threadDocs = await GetThreadDocumentsContentAsync();
-
-                // If no local documents, get relevant knowledge
-                List<string> knowledgeContent;
-                if (threadDocs == null || !threadDocs.Any())
+                // Get relevant knowledge from vector database
+                List<string> knowledgeContent = new List<string>();
+                try
                 {
-                    var knowledgeResults = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
-                    knowledgeContent = knowledgeResults.Select(k => k.Content).ToList();
-                }
-                else
-                {
-                    knowledgeContent = threadDocs;
-                }
-                
-                if (knowledgeContent != null && knowledgeContent.Any())
-                {
-                    string systemPrompt = "You are an expert at analyzing an user question and what they really want to know. If necessary and possible use your general knowledge also";
-
-                    // Get selected prompt content if available
-                    if (!string.IsNullOrEmpty(SelectedPrompt))
+                    var relevantKnowledge = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
+                    if (relevantKnowledge != null && relevantKnowledge.Any())
                     {
-                        var selectedPromptContent = await DbContext.Set<Prompt>()
-                            .Where(p => p.Name == SelectedPrompt)
-                            .Select(p => p.Content)
-                            .FirstOrDefaultAsync();
+                        knowledgeContent.AddRange(relevantKnowledge.Select(k => k.Content));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error retrieving relevant knowledge");
+                }
 
-                        if (!string.IsNullOrEmpty(selectedPromptContent))
+                // Add document content if files are selected
+                if (SelectedFiles != null && SelectedFiles.Any())
+                {
+                    AssociateDocumentsWithThread();
+                    var threadDocs = await GetThreadDocumentsContentAsync();
+                    if (threadDocs != null && threadDocs.Any())
+                    {
+                        knowledgeContent.AddRange(threadDocs);
+                    }
+                }
+
+                // Perform web search if enabled
+                if (EnableWebSearch)
+                {
+                    try
+                    {
+                        var tavilyApiKey = Configuration["Tavily:ApiKey"];
+                        if (!string.IsNullOrEmpty(tavilyApiKey))
                         {
-                            systemPrompt = selectedPromptContent;
+                            using var tavilyClient = new TavilyClient();
+                            var searchResponse = await tavilyClient.SearchAsync(
+                                apiKey: tavilyApiKey,
+                                query: textInput);
+
+                            if (searchResponse?.Results != null)
+                            {
+                                var webResults = searchResponse.Results
+                                    .OrderByDescending(r => r.Score)
+                                    .Take(3) // Limit to top 3 most relevant results
+                                    .Select(r => $"Source: {r.Url}\nTitle: {r.Title}\nContent: {r.Content}");
+
+                                knowledgeContent.Add("\nWeb Search Results:\n" + string.Join("\n---\n", webResults));
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogWarning("Tavily API key not found in configuration");
                         }
                     }
-
-                    systemMessages = new List<SystemMessage>()
+                    catch (Exception ex)
                     {
-                        new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-                    };
-                    systemMessages.Add(new SystemMessage(string.Join("\n", knowledgeContent), new CacheControl() { Type = CacheControlType.ephemeral }));
+                        Logger.LogError(ex, "Error performing web search");
+                    }
                 }
 
-                var parameters = new MessageParameters()
+                string systemPrompt = @"You are an expert at analyzing user questions and providing accurate, relevant answers.
+Use the following guidelines:
+1. Prioritize information from the provided knowledge base when available
+2. Supplement with your general knowledge when needed
+3. Clearly indicate when you're using provided knowledge versus general knowledge
+4. If the provided knowledge seems insufficient or irrelevant, rely on your general expertise";
+
+                // Get selected prompt content if available
+                if (!string.IsNullOrEmpty(SelectedPrompt))
                 {
-                    Messages = chatMessages,
-                    Model = modelChosen,
-                    MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                    Stream = false,
-                    Temperature = 1.0m,
-                    System = systemMessages
+                    var selectedPromptContent = await DbContext.Set<Prompt>()
+                        .Where(p => p.Name == SelectedPrompt)
+                        .Select(p => p.Content)
+                        .FirstOrDefaultAsync();
+
+                    if (!string.IsNullOrEmpty(selectedPromptContent))
+                    {
+                        systemPrompt = selectedPromptContent;
+                    }
+                }
+
+                // Update system messages with knowledge and document content if available
+                if (knowledgeContent.Any())
+                {
+                    systemPrompt += "\n\nRelevant knowledge base content:\n" + string.Join("\n---\n", knowledgeContent);
+                }
+
+                systemMessages = new List<SystemMessage>()
+                {
+                    new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
                 };
 
-                string markdown = string.Empty;
-                int totalTokens = 0;
+                MessageResponse res;
+                string markdown;
 
-                var res = await client.Messages.GetClaudeMessageAsync(parameters);
-                userMessages.Add(res.Message);
+                try
+                {
+                    Message message;
+
+                    // Create message with image if available
+                    var imageBytes = await GetCurrentImageBytes();
+                    if (imageBytes != null && CurrentImageType != null)
+                    {
+                        string base64Data = Convert.ToBase64String(imageBytes);
+
+                        message = new Message
+                        {
+                            Role = RoleType.User,
+                            Content = new List<ContentBase>
+                            {
+                                new ImageContent
+                                {
+                                    Source = new ImageSource
+                                    {
+                                        MediaType = CurrentImageType,
+                                        Data = base64Data
+                                    }
+                                },
+                                new TextContent
+                                {
+                                    Text = textInput
+                                }
+                            }
+                        };
+                    }
+                    else
+                    {
+                        message = new Message(RoleType.User, textInput, null);
+                    }
+
+                    // Explicitly check for image content
+                    bool hasImage = false;
+                    if (message.Content != null)
+                    {
+                        hasImage = message.Content.Any(c => c is ImageContent);
+                    }
+
+                    // Include full chat history in API call
+                    var parameters = new MessageParameters
+                    {
+                        Messages = chatMessages.Concat(new[] { message }).ToList(),
+                        Model = modelChosen,
+                        MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                        Stream = !hasImage, // Don't stream if we have an image
+                        Temperature = 1.0m,
+                        System = systemMessages
+                    };
+
+                    // Add user message to chat history
+                    chatMessages.Add(message);
+
+                    if ((bool)parameters.Stream)
+                    {
+                        markdown = string.Empty;
+                        var outputs = new List<MessageResponse>();
+                        await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
+                        {
+                            if (streamRes.Delta != null)
+                            {
+                                markdown += streamRes.Delta.Text;
+                            }
+                            outputs.Add(streamRes);
+                        }
+                        res = outputs.Last();
+                    }
+                    else
+                    {
+                        res = await client.Messages.GetClaudeMessageAsync(parameters);
+                        markdown = res.Content[0].ToString() ?? "No answer";
+                    }
+
+                    Logger.LogInformation("Successfully received response from Claude API");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to get response from Claude API");
+                    ToastService.ShowToast(new ToastOptions()
+                    {
+                        ProviderName = "ClaudePage",
+                        ThemeMode = ToastThemeMode.Dark,
+                        RenderStyle = ToastRenderStyle.Danger,
+                        Title = "API Error",
+                        Text = "Failed to get response from AI service. Please try again."
+                    });
+                    throw;
+                }
+
                 Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
 
                 // Update user message with token count and cost
@@ -119,31 +252,34 @@ namespace duetGPT.Components.Pages
                 duetUserMessage.MessageCost = CalculateCost(res.Usage.InputTokens, modelChosen);
                 DbContext.SaveChanges();
 
-                // Create and save DuetMessage for assistant response
+                // Create and save assistant message
                 var duetAssistantMessage = new DuetMessage
                 {
                     ThreadId = currentThread.Id,
                     Role = "assistant",
-                    Content = res.Content[0].ToString() ?? "No answer",
+                    Content = markdown,
                     TokenCount = res.Usage.OutputTokens,
                     MessageCost = CalculateCost(res.Usage.OutputTokens, modelChosen)
                 };
                 DbContext.Add(duetAssistantMessage);
                 DbContext.SaveChanges();
 
+                // Add assistant response to chat history
+                var assistantMessage = new Message(RoleType.Assistant, markdown, null);
+                chatMessages.Add(assistantMessage);
+
                 // Generate thread title after first message exchange if not already set
                 if (newThread)
                 {
-                    await GenerateThreadTitle(client, modelChosen, textInput, res.Content[0].ToString());
+                    await GenerateThreadTitle(client, modelChosen, textInput, markdown);
                     newThread = false;
                 }
 
                 // Update Tokens and Cost
-                UpdateTokensAsync(Tokens + totalTokens);
-                UpdateCostAsync(Cost + CalculateCost(totalTokens, modelChosen));
+                UpdateTokensAsync(Tokens);
+                UpdateCostAsync(Cost + CalculateCost(Tokens, modelChosen));
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
-                markdown = res.Content[0].ToString() ?? "No answer";
                 if (textInput != null)
                     formattedMessages.Add(Markdown.ToHtml(textInput, pipeline));
 
@@ -156,22 +292,37 @@ namespace duetGPT.Components.Pages
                     formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
                 }
 
-                textInput = ""; // clear input.
+                textInput = ""; // clear input
                 Logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)
             {
                 Logger.LogError(ex, "Network error while communicating with Anthropic API");
-                ErrorService.ShowError("Error communicating with AI service. Please check your network connection and try again.");
+                ToastService.ShowToast(new ToastOptions()
+                {
+                    ProviderName = "ClaudePage",
+                    ThemeMode = ToastThemeMode.Dark,
+                    RenderStyle = ToastRenderStyle.Danger,
+                    Title = "Network Error",
+                    Text = "Error communicating with AI service. Please check your network connection and try again."
+                });
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error processing message");
-                ErrorService.ShowError("An error occurred while processing your message. Please try again.");
+                ToastService.ShowToast(new ToastOptions()
+                {
+                    ProviderName = "ClaudePage",
+                    ThemeMode = ToastThemeMode.Dark,
+                    RenderStyle = ToastRenderStyle.Danger,
+                    Title = "Processing Error",
+                    Text = "An error occurred while processing your message. Please try again."
+                });
             }
             finally
             {
                 running = false;
+                StateHasChanged();
             }
         }
 

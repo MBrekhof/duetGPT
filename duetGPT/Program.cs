@@ -33,6 +33,8 @@ builder.Services.AddDevExpressBlazor(options =>
     options.SizeMode = DevExpress.Blazor.SizeMode.Medium;
 });
 
+builder.Services.AddDevExpressServerSideBlazorPdfViewer();
+
 // Configure the maximum request body size to 50 MB
 builder.Services.Configure<FormOptions>(options =>
 {
@@ -71,8 +73,6 @@ builder.Services.AddSingleton<OpenAIService>();
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
 
-// Add ErrorPopupService
-builder.Services.AddScoped<ErrorPopupService>();
 
 // Add a hosted service to check Anthropic client status
 //builder.Services.AddHostedService<AnthropicHealthCheckService>();

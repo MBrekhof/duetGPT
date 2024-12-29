@@ -1,8 +1,5 @@
-﻿using DevExpress.Pdf.Native.BouncyCastle.Asn1.X509;
-using DevExpress.RichEdit.Export;
-using OpenAI;
+﻿using OpenAI;
 using Pgvector;
-using Microsoft.Extensions.Logging;
 
 namespace duetGPT.Services
 {

@@ -1,0 +1,53 @@
+{
+  "project": {
+    "name": "duetGPT",
+    "type": "blazor",
+    "framework": "net8.0"
+  },
+  "rules": {
+    "code_style": {
+      "indentation": "spaces",
+      "spaces_per_indent": 4,
+      "max_line_length": 120,
+      "braces_style": "allman"
+    },
+    "naming": {
+      "classes": "PascalCase",
+      "methods": "PascalCase",
+      "variables": "camelCase",
+      "constants": "UPPER_SNAKE_CASE"
+    },
+    "documentation": {
+      "require_xml_comments": true,
+      "require_method_comments": true
+    },
+    "testing": {
+      "require_unit_tests": false,
+      "naming_convention": "Test_{MethodName}_{Scenario}"
+    }
+  },
+  "tools": {
+    "allowed_commands": [
+      "dotnet build",
+      "dotnet test",
+      "dotnet run"
+    ],
+    "restricted_commands": [
+      "rm -rf",
+      "del /s"
+    ]
+  },
+  "file_patterns": {
+    "ignore": [
+      "bin/",
+      "obj/",
+      "*.user",
+      "*.suo"
+    ]
+  },
+  "instructions": {
+    "web": "when using DevExpress components do a websearch if the component is supported in Blazor and what the most recent version is",
+    "refactor": "try to keep the codebase clean and refactor code that is not up to standard but try to keep the changes small and focused",
+    "database": "never provide code changes that require database changes without confirming with the user first"
+  }
+}
