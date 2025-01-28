@@ -7,6 +7,8 @@ using duetGPT.Services;
 using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Tavily;
 
 namespace duetGPT.Components.Pages
@@ -14,10 +16,28 @@ namespace duetGPT.Components.Pages
     public partial class Claude
     {
         [Inject]
-        private OpenAIService OpenAIService { get; set; } = default!;
+        private OpenAIService _openAIService { get; set; } = default!;
 
         [Inject]
-        private IKnowledgeService KnowledgeService { get; set; } = default!;
+        private AnthropicService _anthropicService { get; set; } = default!;
+
+        [Inject]
+        private IKnowledgeService _knowledgeService { get; set; } = default!;
+
+        [Inject]
+        private IConfiguration _configuration { get; set; } = default!;
+
+        [Inject]
+        private ILogger<Claude> _logger { get; set; } = default!;
+
+        [Inject]
+        private IDbContextFactory<ApplicationDbContext> _dbContextFactory { get; set; } = default!;
+
+        [Inject]
+        private IToastNotificationService _toastService { get; set; } = default!;
+
+        [Inject]
+        private Services.DeepSeekService _deepSeekService { get; set; } = default!;
 
         private record struct ModelCosts(decimal InputRate, decimal OutputRate);
 
@@ -27,8 +47,8 @@ namespace duetGPT.Components.Pages
             { AnthropicModels.Claude3Sonnet, new ModelCosts(0.0003m, 0.0003m) },
             { AnthropicModels.Claude35Sonnet, new ModelCosts(0.00035m, 0.00035m) },
             { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) },
-            { "deepseek-7b", new ModelCosts(0.0001m, 0.0001m) },
-            { "deepseek-67b", new ModelCosts(0.0002m, 0.0002m) }
+            { DeepSeekModels.ChatModel, new ModelCosts(0.0001m, 0.0001m) },
+            { DeepSeekModels.ReasonerModel, new ModelCosts(0.0002m, 0.0002m) }
         };
 
         async Task SendClick()
@@ -55,9 +75,9 @@ namespace duetGPT.Components.Pages
                     newThread = true; // Ensure title gets generated after this message exchange
                 }
                 string modelChosen = GetModelChosen(ModelValue);
-                Logger.LogInformation("Sending message using model: {Model}", modelChosen);
+                _logger.LogInformation("Sending message using model: {Model}", modelChosen);
 
-                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
                 // Create and save DuetMessage for user input
                 var duetUserMessage = new DuetMessage
@@ -75,7 +95,7 @@ namespace duetGPT.Components.Pages
                 List<string> knowledgeContent = new List<string>();
                 try
                 {
-                    var relevantKnowledge = await KnowledgeService.GetRelevantKnowledgeAsync(textInput);
+                    var relevantKnowledge = await _knowledgeService.GetRelevantKnowledgeAsync(textInput);
                     if (relevantKnowledge != null && relevantKnowledge.Any())
                     {
                         knowledgeContent.AddRange(relevantKnowledge.Select(k => k.Content));
@@ -83,7 +103,7 @@ namespace duetGPT.Components.Pages
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Error retrieving relevant knowledge");
+                    _logger.LogError(ex, "Error retrieving relevant knowledge");
                 }
 
                 // Add document content if files are selected
@@ -102,7 +122,7 @@ namespace duetGPT.Components.Pages
                 {
                     try
                     {
-                        var tavilyApiKey = Configuration["Tavily:ApiKey"];
+                        var tavilyApiKey = _configuration["Tavily:ApiKey"];
                         if (!string.IsNullOrEmpty(tavilyApiKey))
                         {
                             using var tavilyClient = new TavilyClient();
@@ -122,12 +142,12 @@ namespace duetGPT.Components.Pages
                         }
                         else
                         {
-                            Logger.LogWarning("Tavily API key not found in configuration");
+                            _logger.LogWarning("Tavily API key not found in configuration");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError(ex, "Error performing web search");
+                        _logger.LogError(ex, "Error performing web search");
                     }
                 }
 
@@ -163,10 +183,10 @@ Use the following guidelines:
 
                 try
                 {
-                    if (modelChosen.StartsWith("deepseek"))
+                    if (modelChosen == DeepSeekModels.ChatModel || modelChosen == DeepSeekModels.ReasonerModel)
                     {
                         // Handle DeepSeek models
-                        var response = await DeepSeekService.GetCompletionAsync(textInput, systemPrompt, modelChosen);
+                        var response = await _deepSeekService.GetCompletionAsync(textInput, systemPrompt, modelChosen);
                         markdown = response.Content;
                         res = new MessageResponse
                         {
@@ -177,7 +197,7 @@ Use the following guidelines:
                     else
                     {
                         // Handle Anthropic models
-                        var client = AnthropicService.GetAnthropicClient();
+                        var client = _anthropicService.GetAnthropicClient();
                         systemMessages = new List<SystemMessage>()
                         {
                             new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
@@ -258,12 +278,12 @@ Use the following guidelines:
                         }
                     }
 
-                    Logger.LogInformation("Successfully received response from AI service");
+                    _logger.LogInformation("Successfully received response from AI service");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Failed to get response from AI service");
-                    ToastService.ShowToast(new ToastOptions()
+                    _logger.LogError(ex, "Failed to get response from AI service");
+                    _toastService.ShowToast(new ToastOptions()
                     {
                         ProviderName = "ClaudePage",
                         ThemeMode = ToastThemeMode.Dark,
@@ -303,9 +323,9 @@ Use the following guidelines:
                 chatMessages.Add(assistantMessage);
 
                 // Generate thread title after first message exchange if not already set
-                if (newThread && !modelChosen.StartsWith("deepseek"))
+                if (newThread && modelChosen != DeepSeekModels.ChatModel && modelChosen != DeepSeekModels.ReasonerModel)
                 {
-                    await GenerateThreadTitle(AnthropicService.GetAnthropicClient(), modelChosen, textInput, markdown);
+                    await GenerateThreadTitle(_anthropicService.GetAnthropicClient(), modelChosen, textInput, markdown);
                     newThread = false;
                 }
 
@@ -327,12 +347,12 @@ Use the following guidelines:
                 }
 
                 textInput = ""; // clear input
-                Logger.LogInformation("Message sent and processed successfully");
+                _logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)
             {
-                Logger.LogError(ex, "Network error while communicating with AI service");
-                ToastService.ShowToast(new ToastOptions()
+                _logger.LogError(ex, "Network error while communicating with AI service");
+                _toastService.ShowToast(new ToastOptions()
                 {
                     ProviderName = "ClaudePage",
                     ThemeMode = ToastThemeMode.Dark,
@@ -343,8 +363,8 @@ Use the following guidelines:
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error processing message");
-                ToastService.ShowToast(new ToastOptions()
+                _logger.LogError(ex, "Error processing message");
+                _toastService.ShowToast(new ToastOptions()
                 {
                     ProviderName = "ClaudePage",
                     ThemeMode = ToastThemeMode.Dark,
@@ -362,7 +382,7 @@ Use the following guidelines:
 
         private async Task GenerateThreadTitle(AnthropicClient client, string modelChosen, string userMessage, string assistantResponse)
         {
-            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             try
             {
                 var titlePrompt = new Message(
@@ -412,7 +432,7 @@ Use the following guidelines:
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error generating thread title");
+                _logger.LogError(ex, "Error generating thread title");
                 // Don't throw - we don't want to interrupt the main conversation flow if title generation fails
             }
         }
@@ -427,15 +447,15 @@ Use the following guidelines:
                     Model.Sonnet => AnthropicModels.Claude3Sonnet,
                     Model.Sonnet35 => AnthropicModels.Claude35Sonnet,
                     Model.Opus => AnthropicModels.Claude3Opus,
-                    Model.DeepSeek7B => "deepseek-7b",
-                    Model.DeepSeek67B => "deepseek-67b",
+                    Model.DeepSeek7B => DeepSeekModels.ChatModel,
+                    Model.DeepSeekR1 => DeepSeekModels.ReasonerModel,
                     _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
                         $"Not expected model value: {modelValue}")
                 };
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Error getting model choice for value: {ModelValue}", modelValue);
+                _logger.LogError(ex, "Error getting model choice for value: {ModelValue}", modelValue);
                 throw;
             }
         }
@@ -448,7 +468,7 @@ Use the following guidelines:
             }
 
             // Log warning for unrecognized model and use default rates
-            Logger.LogWarning("Unrecognized model: {Model}. Using default rates.", model);
+            _logger.LogWarning("Unrecognized model: {Model}. Using default rates.", model);
             return new ModelCosts(0.0003m, 0.0003m);
         }
 

@@ -1,15 +1,11 @@
-using Anthropic.SDK;
-using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
 using DevExpress.Blazor;
 using DevExpress.Blazor.Internal;
-using System.Security.Claims;
-using System.Collections.Generic;
-using System.Linq;
+using duetGPT.Services;
 
 namespace duetGPT.Components.Pages
 {
-  public partial class Claude
+    public partial class Claude
   {
     private async Task SummarizeThread()
     {

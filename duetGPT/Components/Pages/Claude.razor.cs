@@ -35,6 +35,12 @@ namespace duetGPT.Components.Pages
         public required DeepSeekService DeepSeekService { get; set; }
 
         /// <summary>
+        /// Service for managing knowledge base operations.
+        /// </summary>
+        [Inject]
+        public required IKnowledgeService KnowledgeService { get; set; }
+
+        /// <summary>
         /// Factory for creating database contexts.
         /// </summary>
         [Inject]
@@ -129,7 +135,7 @@ namespace duetGPT.Components.Pages
             Sonnet,
             Opus,
             DeepSeek7B,
-            DeepSeek67B
+            DeepSeekR1
         }
 
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();
