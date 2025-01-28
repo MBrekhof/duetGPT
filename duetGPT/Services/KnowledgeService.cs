@@ -34,11 +34,13 @@ namespace duetGPT.Services
       try
       {
         // Get embedding for user question
-        var questionEmbedding = await _openAIService.GetVectorDataAsync(userQuestion);
+        var embeddingResult = await _openAIService.GetVectorDataAsync(userQuestion);
+        _logger.LogInformation("Generated embedding for question. Tokens: {TokenCount}, Cost: ${Cost}",
+            embeddingResult.TokenCount, embeddingResult.Cost.ToString("F6"));
 
         // Build the SQL query with direct vector syntax and include metadata
         var sql = "SELECT ragdataid as Id, ragcontent, metadata, vectordatastring, " +
-                 "(vectordatastring <-> '" + questionEmbedding + "'::vector) as distance " +
+                 "(vectordatastring <-> '" + embeddingResult.Vector + "'::vector) as distance " +
                  "FROM ragdata " +
                  "WHERE vectordatastring IS NOT NULL " +
                  "ORDER BY distance " +
@@ -106,7 +108,9 @@ namespace duetGPT.Services
       try
       {
         // Get embedding for the content
-        var embedding = await _openAIService.GetVectorDataAsync(content);
+        var embeddingResult = await _openAIService.GetVectorDataAsync(content);
+        _logger.LogInformation("Generated embedding for content. Tokens: {TokenCount}, Cost: ${Cost}",
+            embeddingResult.TokenCount, embeddingResult.Cost.ToString("F6"));
 
         var knowledge = new Knowledge
         {
@@ -114,8 +118,10 @@ namespace duetGPT.Services
           Title = title,
           Metadata = metadata,
           OwnerId = userId,
-          VectorDataString = embedding,
-          CreationDate = DateTime.UtcNow
+          VectorDataString = embeddingResult.Vector,
+          CreationDate = DateTime.UtcNow,
+          Tokens = embeddingResult.TokenCount,
+          EmbeddingCost = embeddingResult.Cost
         };
 
         _dbContext.Add(knowledge);

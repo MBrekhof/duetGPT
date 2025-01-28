@@ -11,7 +11,7 @@ namespace duetGPT.Components.Pages;
 public partial class KnowledgePage
 {
   [Inject]
-  private ApplicationDbContext Context { get; set; } = default!;
+  private IDbContextFactory<ApplicationDbContext> _contextFactory { get; set; } = default!;
 
   [Inject]
   private OpenAIService OpenAIService { get; set; } = default!;
@@ -42,7 +42,8 @@ public partial class KnowledgePage
   {
     try
     {
-      GridDataSource = await Context.Set<Knowledge>()
+      await using var context = await _contextFactory.CreateDbContextAsync();
+      GridDataSource = await context.Set<Knowledge>()
           .Include(k => k.Owner)
           .Where(d => d.OwnerId == CurrentUserId)
           .ToListAsync();
@@ -78,7 +79,8 @@ public partial class KnowledgePage
       CreationDate = knowledge.CreationDate,
       VectorDataString = knowledge.VectorDataString,
       OwnerId = knowledge.OwnerId,
-      Metadata = knowledge.Metadata
+      Metadata = knowledge.Metadata,
+      EmbeddingCost = knowledge.EmbeddingCost
     } : new Knowledge
     {
       CreationDate = DateTime.UtcNow,
@@ -91,43 +93,29 @@ public partial class KnowledgePage
   {
     try
     {
+      await using var context = await _contextFactory.CreateDbContextAsync();
+
       if (KnowledgeData.RagDataId == 0)
       {
         KnowledgeData.OwnerId = CurrentUserId;
-        Context.Add(KnowledgeData);
+        context.Add(KnowledgeData);
       }
       else
       {
-        var existingItem = await Context.Set<Knowledge>().FindAsync(KnowledgeData.RagDataId);
+        var existingItem = await context.Set<Knowledge>().FindAsync(KnowledgeData.RagDataId);
         if (existingItem != null)
         {
           existingItem.Title = KnowledgeData.Title;
           existingItem.RagContent = KnowledgeData.RagContent;
           existingItem.Tokens = KnowledgeData.Tokens;
           existingItem.Metadata = KnowledgeData.Metadata;
-          // Explicitly not updating vectordatastring as per requirements
-          Context.Update(existingItem);
+          context.Update(existingItem);
         }
       }
-      await Context.SaveChangesAsync();
+
+      await context.SaveChangesAsync();
       await LoadData();
-      //ToastService.ShowToast(new ToastOptions()
-      //{
-      //  ProviderName = "KnowledgeToasts",
-      //  ThemeMode = ToastThemeMode.Dark,
-      //  RenderStyle = ToastRenderStyle.Success,
-      //  Title = "Success",
-      //  Text = "Knowledge embedded successfully"
-      //});
-      //ToastService.ShowToast(new ToastOptions()
-      //{
-      //  ProviderName = "KnowledgeToasts",
-      //  ThemeMode = ToastThemeMode.Dark,
-      //  RenderStyle = ToastRenderStyle.Success,
-      //  Title = "Success",
-      //  Text = "Knowledge deleted successfully"
-      //});
-      //PopupVisible = false;
+
       ToastService.ShowToast(new ToastOptions()
       {
         ProviderName = "KnowledgeToasts",
@@ -154,11 +142,12 @@ public partial class KnowledgePage
   {
     try
     {
-      var knowledge = await Context.Set<Knowledge>().FindAsync(knowledgeId);
+      await using var context = await _contextFactory.CreateDbContextAsync();
+      var knowledge = await context.Set<Knowledge>().FindAsync(knowledgeId);
       if (knowledge != null)
       {
-        Context.Remove(knowledge);
-        await Context.SaveChangesAsync();
+        context.Remove(knowledge);
+        await context.SaveChangesAsync();
         await LoadData();
       }
     }
@@ -181,32 +170,37 @@ public partial class KnowledgePage
     {
       if (knowledge != null && !string.IsNullOrEmpty(knowledge.RagContent))
       {
-        // Combine content and metadata for embedding
         var textToEmbed = knowledge.RagContent;
         if (!string.IsNullOrEmpty(knowledge.Metadata))
         {
           textToEmbed += "\n\nMetadata:\n" + knowledge.Metadata;
         }
-        var vector = await OpenAIService.GetVectorDataAsync(textToEmbed);
-        var existingItem = await Context.Set<Knowledge>().FindAsync(knowledge.RagDataId);
+
+        var embeddingResult = await OpenAIService.GetVectorDataAsync(textToEmbed);
+
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        var existingItem = await context.Set<Knowledge>().FindAsync(knowledge.RagDataId);
         if (existingItem != null)
         {
-          existingItem.VectorDataString = vector;
-          Context.Update(existingItem);
-          await Context.SaveChangesAsync();
+          existingItem.VectorDataString = embeddingResult.Vector;
+          existingItem.Tokens = embeddingResult.TokenCount;
+          existingItem.EmbeddingCost = embeddingResult.Cost;
+          context.Update(existingItem);
+          await context.SaveChangesAsync();
           await LoadData();
         }
       }
-            ToastService.ShowToast(new ToastOptions()
-            {
-                ProviderName = "KnowledgeToasts",
-                ThemeMode = ToastThemeMode.Dark,
-                RenderStyle = ToastRenderStyle.Success,
-                Title = "Success",
-                Text = "Knowledge embedded successfully"
-            });
-        }
-        catch (Exception ex)
+
+      ToastService.ShowToast(new ToastOptions()
+      {
+        ProviderName = "KnowledgeToasts",
+        ThemeMode = ToastThemeMode.Dark,
+        RenderStyle = ToastRenderStyle.Success,
+        Title = "Success",
+        Text = $"Knowledge embedded successfully. Cost: ${knowledge.EmbeddingCost:F6}"
+      });
+    }
+    catch (Exception ex)
     {
       ToastService.ShowToast(new ToastOptions()
       {

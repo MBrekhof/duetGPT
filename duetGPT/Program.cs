@@ -17,12 +17,8 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Host.UseSerilog();
-//builder.Logging.ClearProviders();
-//builder.Host.UseSerilog((context, services, configuration) => configuration
-//    .ReadFrom.Configuration(context.Configuration)
-//    .ReadFrom.Services(services)
-//    .Enrich.FromLogContext());
-builder.Services.AddSerilog(); // <-- Add this line
+builder.Services.AddSerilog();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -41,8 +37,8 @@ builder.Services.Configure<FormOptions>(options =>
     options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
 });
 
-// Add PostgreSQL DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+// Add PostgreSQL DbContext Factory
+builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Identity services with custom authentication configuration
@@ -69,13 +65,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<AnthropicService>();
 // Add OpenAIService
 builder.Services.AddSingleton<OpenAIService>();
+// Add DeepSeekService
+builder.Services.AddSingleton<DeepSeekService>();
 
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
-
-
-// Add a hosted service to check Anthropic client status
-//builder.Services.AddHostedService<AnthropicHealthCheckService>();
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
@@ -86,7 +80,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 

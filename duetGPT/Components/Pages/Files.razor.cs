@@ -452,6 +452,7 @@ public partial class Files : ComponentBase
         var chunks = SplitArticleIntoChunks(plainText, 500);
 
         _logger.LogInformation($"Creating knowledge records for {chunks.Count} chunks");
+        decimal totalEmbeddingCost = 0;
         // Create Knowledge records for each chunk
         for (int i = 0; i < chunks.Count; i++)
         {
@@ -474,16 +475,20 @@ public partial class Files : ComponentBase
             }
           }
 
+          // Get embedding with cost tracking
+          var embeddingResult = await OpenAIService.GetVectorDataAsync(chunk);
+          totalEmbeddingCost += embeddingResult.Cost;
+
           var knowledge = new Knowledge
           {
             Title = $"#{i + 1}_{document.FileName}"[..Math.Min(50, $"#{i + 1}_{document.FileName}".Length)],
             RagContent = chunk,
             Metadata = metadata.ToString(),
-            Tokens = wordCount,
+            Tokens = embeddingResult.TokenCount,
             CreationDate = DateTime.UtcNow,
-            // Only embed the actual content, not the metadata
-            VectorDataString = await OpenAIService.GetVectorDataAsync(chunk),
-            OwnerId = currentUserId
+            VectorDataString = embeddingResult.Vector,
+            OwnerId = currentUserId,
+            EmbeddingCost = embeddingResult.Cost
           };
 
           DbContext.Set<Knowledge>().Add(knowledge);
@@ -491,7 +496,7 @@ public partial class Files : ComponentBase
 
         await DbContext.SaveChangesAsync();
         embeddingSuccess[dataItem.Id] = true;
-        _logger.LogInformation($"Successfully created {chunks.Count} knowledge records from document: {document.FileName}");
+        _logger.LogInformation($"Successfully created {chunks.Count} knowledge records from document: {document.FileName}. Total embedding cost: ${totalEmbeddingCost:F6}");
         _toastService.ShowToast(new ToastOptions()
         {
           ProviderName = "FilesPage",

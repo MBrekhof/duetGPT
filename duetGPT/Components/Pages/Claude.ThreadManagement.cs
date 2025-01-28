@@ -9,6 +9,7 @@ namespace duetGPT.Components.Pages
     {
         private async Task<DuetThread> CreateNewThread()
         {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
             try
             {
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -26,7 +27,7 @@ namespace duetGPT.Components.Pages
                 // Get selected prompt content if available
                 if (!string.IsNullOrEmpty(SelectedPrompt))
                 {
-                    var selectedPromptContent = await DbContext.Set<Prompt>()
+                    var selectedPromptContent = await dbContext.Set<Prompt>()
                         .Where(p => p.Name == SelectedPrompt)
                         .Select(p => p.Content)
                         .FirstOrDefaultAsync();
@@ -58,8 +59,8 @@ namespace duetGPT.Components.Pages
                 };
 
                 // Save the thread immediately
-                DbContext.Threads.Add(thread);
-                await DbContext.SaveChangesAsync();
+                dbContext.Threads.Add(thread);
+                await dbContext.SaveChangesAsync();
 
                 Logger.LogInformation("New thread created with ID {ThreadId}", thread.Id);
                 return thread;
@@ -99,35 +100,48 @@ namespace duetGPT.Components.Pages
             }
         }
 
-        private void AssociateDocumentsWithThread()
+        private async Task AssociateDocumentsWithThread()
         {
+            if (currentThread == null || !SelectedFiles.Any()) return;
+
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
             try
             {
-                if (currentThread != null && SelectedFiles.Any())
+                Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
+                var selectedDocuments = await dbContext.Documents
+                    .Where(d => SelectedFiles.Contains(d.Id))
+                    .ToListAsync();
+
+                var thread = await dbContext.Threads
+                    .Include(t => t.ThreadDocuments)
+                    .FirstOrDefaultAsync(t => t.Id == currentThread.Id);
+
+                if (thread == null)
                 {
-                    Logger.LogInformation("Associating documents with thread {ThreadId}", currentThread.Id);
-                    var selectedDocuments = DbContext.Documents
-                        .Where(d => SelectedFiles.Contains(d.Id))
-                        .ToList();
-
-                    if (currentThread.ThreadDocuments == null)
-                    {
-                        currentThread.ThreadDocuments = new List<ThreadDocument>();
-                    }
-
-                    var newThreadDocuments = selectedDocuments
-                        .Select(document => new ThreadDocument
-                        {
-                            ThreadId = currentThread.Id,
-                            DocumentId = document.Id
-                        })
-                        .ToList();
-
-                    currentThread.ThreadDocuments.AddRange(newThreadDocuments);
-
-                    DbContext.SaveChanges();
-                    Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, currentThread.Id);
+                    Logger.LogError("Thread not found in database");
+                    return;
                 }
+
+                if (thread.ThreadDocuments == null)
+                {
+                    thread.ThreadDocuments = new List<ThreadDocument>();
+                }
+
+                var newThreadDocuments = selectedDocuments
+                    .Select(document => new ThreadDocument
+                    {
+                        ThreadId = thread.Id,
+                        DocumentId = document.Id
+                    })
+                    .ToList();
+
+                thread.ThreadDocuments.AddRange(newThreadDocuments);
+                await dbContext.SaveChangesAsync();
+
+                // Update the current thread with the new documents
+                currentThread = thread;
+
+                Logger.LogInformation("Associated {Count} documents with thread {ThreadId}", selectedDocuments.Count, thread.Id);
             }
             catch (DbUpdateException ex)
             {
@@ -149,8 +163,9 @@ namespace duetGPT.Components.Pages
                 return new List<string>();
             }
 
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
             var documentIds = currentThread.ThreadDocuments.Select(td => td.DocumentId).ToList();
-            var documents = await DbContext.Documents
+            var documents = await dbContext.Documents
                 .Where(d => documentIds.Contains(d.Id))
                 .ToListAsync();
 
@@ -173,7 +188,7 @@ namespace duetGPT.Components.Pages
                     plainText = ExtractTextFromDoc(document.Content);
                 }
                 else if (document.ContentType == "text/plain" || document.ContentType == "application/octet-stream" ||
-             document.ContentType == "text/json" || document.ContentType == "text/xml")
+                     document.ContentType == "text/json" || document.ContentType == "text/xml")
                 {
                     plainText = System.Text.Encoding.UTF8.GetString(document.Content);
                 }

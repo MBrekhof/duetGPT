@@ -258,7 +258,7 @@ namespace duetGPT.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("Documents");
+                    b.ToTable("Documents", (string)null);
                 });
 
             modelBuilder.Entity("duetGPT.Data.DuetMessage", b =>
@@ -373,7 +373,7 @@ namespace duetGPT.Migrations
 
                     b.HasIndex("OwnerId");
 
-                    b.ToTable("ragdata");
+                    b.ToTable("ragdata", (string)null);
                 });
 
             modelBuilder.Entity("duetGPT.Data.KnowledgeQueryResult", b =>
@@ -391,7 +391,7 @@ namespace duetGPT.Migrations
                     b.Property<float>("distance")
                         .HasColumnType("real");
 
-                    b.ToTable("KnowledgeQueryResults");
+                    b.ToTable("KnowledgeQueryResults", (string)null);
                 });
 
             modelBuilder.Entity("duetGPT.Data.KnowledgeResult", b =>
@@ -403,7 +403,7 @@ namespace duetGPT.Migrations
                     b.Property<float>("Distance")
                         .HasColumnType("real");
 
-                    b.ToTable("KnowledgeResults");
+                    b.ToTable("KnowledgeResults", (string)null);
                 });
 
             modelBuilder.Entity("duetGPT.Data.Prompt", b =>
@@ -430,7 +430,7 @@ namespace duetGPT.Migrations
 
                     b.HasKey("PromptID");
 
-                    b.ToTable("Prompts");
+                    b.ToTable("Prompts", (string)null);
                 });
 
             modelBuilder.Entity("duetGPT.Data.ThreadDocument", b =>
@@ -453,7 +453,7 @@ namespace duetGPT.Migrations
 
                     b.HasIndex("ThreadId");
 
-                    b.ToTable("ThreadDocuments");
+                    b.ToTable("ThreadDocuments", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

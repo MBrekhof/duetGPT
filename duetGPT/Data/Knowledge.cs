@@ -19,6 +19,9 @@ namespace duetGPT.Data
         [Column("tokens")]
         public int Tokens { get; set; }
 
+        [Column("embeddingcost", TypeName = "decimal(18,6)")]
+        public decimal EmbeddingCost { get; set; }
+
         [Column("vectordatastring", TypeName = "vector(1536)")]
         public Vector? VectorDataString { get; set; }
 

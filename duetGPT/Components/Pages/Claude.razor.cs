@@ -9,20 +9,57 @@ using Tavily;
 
 namespace duetGPT.Components.Pages
 {
-    public partial class Claude
+    /// <summary>
+    /// Component for handling Claude AI chat interactions and message management.
+    /// </summary>
+    public partial class Claude : ComponentBase
     {
-        [Inject] private ILogger<Claude> Logger { get; set; }
-        [Inject] private AnthropicService AnthropicService { get; set; }
-        [Inject] private ApplicationDbContext DbContext { get; set; }
-        [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
-        [Inject] private IConfiguration Configuration { get; set; }
+        #region Injected Services
+
+        /// <summary>
+        /// Logger instance for the Claude component.
+        /// </summary>
+        [Inject]
+        public required ILogger<Claude> Logger { get; set; }
+
+        /// <summary>
+        /// Service for interacting with the Anthropic AI API.
+        /// </summary>
+        [Inject]
+        public required AnthropicService AnthropicService { get; set; }
+
+        /// <summary>
+        /// Service for interacting with the DeepSeek AI API.
+        /// </summary>
+        [Inject]
+        public required DeepSeekService DeepSeekService { get; set; }
+
+        /// <summary>
+        /// Factory for creating database contexts.
+        /// </summary>
+        [Inject]
+        public required IDbContextFactory<ApplicationDbContext> DbContextFactory { get; set; }
+
+        /// <summary>
+        /// Provider for authentication state management.
+        /// </summary>
+        [Inject]
+        public required AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+
+        /// <summary>
+        /// Application configuration provider.
+        /// </summary>
+        [Inject]
+        public required IConfiguration Configuration { get; set; }
+
+        #endregion
 
         private string textInput = "";
         private List<Message> chatMessages = new();
         private List<SystemMessage> systemMessages = new();
         private bool running;
         private bool newThread = false;
-        private DuetThread currentThread;
+        private DuetThread? currentThread;
         private bool EnableWebSearch { get; set; }
 
         // Messages formatted for display
@@ -37,7 +74,8 @@ namespace duetGPT.Components.Pages
 
             chatMessages.Clear();
 
-            var dbMessages = await DbContext.Messages
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+            var dbMessages = await dbContext.Messages
                 .Where(m => m.ThreadId == currentThread.Id)
                 .OrderBy(m => m.Id)
                 .ToListAsync();
@@ -68,14 +106,20 @@ namespace duetGPT.Components.Pages
         public int Tokens
         {
             get => _tokens;
-            set => UpdateTokensAsync(value);
+            set
+            {
+                InvokeAsync(async () => await UpdateTokensAsync(value));
+            }
         }
 
         private decimal _cost;
         public decimal Cost
         {
             get => _cost;
-            set => UpdateCostAsync(value);
+            set
+            {
+                InvokeAsync(async () => await UpdateCostAsync(value));
+            }
         }
 
         public enum Model
@@ -83,7 +127,9 @@ namespace duetGPT.Components.Pages
             Sonnet35,
             Haiku35,
             Sonnet,
-            Opus
+            Opus,
+            DeepSeek7B,
+            DeepSeek67B
         }
 
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();
@@ -100,7 +146,6 @@ namespace duetGPT.Components.Pages
 
         protected override async Task OnAfterRenderAsync(bool firstRender)
         {
-            base.OnAfterRender(firstRender);
             if (firstRender)
             {
                 Logger.LogInformation("Claude component rendered");
@@ -116,7 +161,8 @@ namespace duetGPT.Components.Pages
             try
             {
                 Logger.LogInformation("Loading prompts");
-                Prompts = await DbContext.Set<Prompt>().ToListAsync();
+                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+                Prompts = await dbContext.Set<Prompt>().ToListAsync();
                 Logger.LogInformation("Loaded {Count} prompts", Prompts.Count);
             }
             catch (Exception ex)
@@ -134,10 +180,11 @@ namespace duetGPT.Components.Pages
                 var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
                 var user = authState.User;
                 var currentUser = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                AvailableFiles = await DbContext.Documents.ToListAsync();
+
+                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
                 if (currentUser != null)
                 {
-                    AvailableFiles = await DbContext.Documents
+                    AvailableFiles = await dbContext.Documents
                         .Include(d => d.Owner)
                         .Where(d => d.OwnerId == currentUser)
                         .ToListAsync();

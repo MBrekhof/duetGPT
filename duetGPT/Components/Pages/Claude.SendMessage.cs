@@ -19,6 +19,18 @@ namespace duetGPT.Components.Pages
         [Inject]
         private IKnowledgeService KnowledgeService { get; set; } = default!;
 
+        private record struct ModelCosts(decimal InputRate, decimal OutputRate);
+
+        private static readonly Dictionary<string, ModelCosts> MODEL_COSTS = new()
+        {
+            { AnthropicModels.Claude3Haiku, new ModelCosts(0.00025m, 0.00025m) },
+            { AnthropicModels.Claude3Sonnet, new ModelCosts(0.0003m, 0.0003m) },
+            { AnthropicModels.Claude35Sonnet, new ModelCosts(0.00035m, 0.00035m) },
+            { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) },
+            { "deepseek-7b", new ModelCosts(0.0001m, 0.0001m) },
+            { "deepseek-67b", new ModelCosts(0.0002m, 0.0002m) }
+        };
+
         async Task SendClick()
         {
             if (string.IsNullOrWhiteSpace(textInput))
@@ -30,7 +42,6 @@ namespace duetGPT.Components.Pages
                 running = true;
                 // Force immediate UI refresh
                 await InvokeAsync(StateHasChanged);
-                var client = AnthropicService.GetAnthropicClient();
 
                 // Create thread if it doesn't exist yet
                 if (currentThread == null)
@@ -46,6 +57,8 @@ namespace duetGPT.Components.Pages
                 string modelChosen = GetModelChosen(ModelValue);
                 Logger.LogInformation("Sending message using model: {Model}", modelChosen);
 
+                await using var dbContext = await DbContextFactory.CreateDbContextAsync();
+
                 // Create and save DuetMessage for user input
                 var duetUserMessage = new DuetMessage
                 {
@@ -55,8 +68,8 @@ namespace duetGPT.Components.Pages
                     TokenCount = 0, // Will be updated when we get response
                     MessageCost = 0 // Will be updated when we get response
                 };
-                DbContext.Add(duetUserMessage);
-                DbContext.SaveChanges();
+                dbContext.Add(duetUserMessage);
+                await dbContext.SaveChangesAsync();
 
                 // Get relevant knowledge from vector database
                 List<string> knowledgeContent = new List<string>();
@@ -76,7 +89,7 @@ namespace duetGPT.Components.Pages
                 // Add document content if files are selected
                 if (SelectedFiles != null && SelectedFiles.Any())
                 {
-                    AssociateDocumentsWithThread();
+                    await AssociateDocumentsWithThread();
                     var threadDocs = await GetThreadDocumentsContentAsync();
                     if (threadDocs != null && threadDocs.Any())
                     {
@@ -128,7 +141,7 @@ Use the following guidelines:
                 // Get selected prompt content if available
                 if (!string.IsNullOrEmpty(SelectedPrompt))
                 {
-                    var selectedPromptContent = await DbContext.Set<Prompt>()
+                    var selectedPromptContent = await dbContext.Set<Prompt>()
                         .Where(p => p.Name == SelectedPrompt)
                         .Select(p => p.Content)
                         .FirstOrDefaultAsync();
@@ -145,95 +158,111 @@ Use the following guidelines:
                     systemPrompt += "\n\nRelevant knowledge base content:\n" + string.Join("\n---\n", knowledgeContent);
                 }
 
-                systemMessages = new List<SystemMessage>()
-                {
-                    new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-                };
-
                 MessageResponse res;
                 string markdown;
 
                 try
                 {
-                    Message message;
-
-                    // Create message with image if available
-                    var imageBytes = await GetCurrentImageBytes();
-                    if (imageBytes != null && CurrentImageType != null)
+                    if (modelChosen.StartsWith("deepseek"))
                     {
-                        string base64Data = Convert.ToBase64String(imageBytes);
-
-                        message = new Message
+                        // Handle DeepSeek models
+                        var response = await DeepSeekService.GetCompletionAsync(textInput, systemPrompt, modelChosen);
+                        markdown = response.Content;
+                        res = new MessageResponse
                         {
-                            Role = RoleType.User,
-                            Content = new List<ContentBase>
-                            {
-                                new ImageContent
-                                {
-                                    Source = new ImageSource
-                                    {
-                                        MediaType = CurrentImageType,
-                                        Data = base64Data
-                                    }
-                                },
-                                new TextContent
-                                {
-                                    Text = textInput
-                                }
-                            }
+                            Content = new List<ContentBase> { new TextContent { Text = markdown } },
+                            Usage = new Usage { InputTokens = response.InputTokens, OutputTokens = response.OutputTokens }
                         };
                     }
                     else
                     {
-                        message = new Message(RoleType.User, textInput, null);
-                    }
-
-                    // Explicitly check for image content
-                    bool hasImage = false;
-                    if (message.Content != null)
-                    {
-                        hasImage = message.Content.Any(c => c is ImageContent);
-                    }
-
-                    // Include full chat history in API call
-                    var parameters = new MessageParameters
-                    {
-                        Messages = chatMessages.Concat(new[] { message }).ToList(),
-                        Model = modelChosen,
-                        MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                        Stream = !hasImage, // Don't stream if we have an image
-                        Temperature = 1.0m,
-                        System = systemMessages
-                    };
-
-                    // Add user message to chat history
-                    chatMessages.Add(message);
-
-                    if ((bool)parameters.Stream)
-                    {
-                        markdown = string.Empty;
-                        var outputs = new List<MessageResponse>();
-                        await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
+                        // Handle Anthropic models
+                        var client = AnthropicService.GetAnthropicClient();
+                        systemMessages = new List<SystemMessage>()
                         {
-                            if (streamRes.Delta != null)
+                            new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                        };
+
+                        Message message;
+
+                        // Create message with image if available
+                        var imageBytes = await GetCurrentImageBytes();
+                        if (imageBytes != null && CurrentImageType != null)
+                        {
+                            string base64Data = Convert.ToBase64String(imageBytes);
+
+                            message = new Message
                             {
-                                markdown += streamRes.Delta.Text;
-                            }
-                            outputs.Add(streamRes);
+                                Role = RoleType.User,
+                                Content = new List<ContentBase>
+                                {
+                                    new ImageContent
+                                    {
+                                        Source = new ImageSource
+                                        {
+                                            MediaType = CurrentImageType,
+                                            Data = base64Data
+                                        }
+                                    },
+                                    new TextContent
+                                    {
+                                        Text = textInput
+                                    }
+                                }
+                            };
                         }
-                        res = outputs.Last();
-                    }
-                    else
-                    {
-                        res = await client.Messages.GetClaudeMessageAsync(parameters);
-                        markdown = res.Content[0].ToString() ?? "No answer";
+                        else
+                        {
+                            message = new Message(RoleType.User, textInput, null);
+                        }
+
+                        // Explicitly check for image content
+                        bool hasImage = false;
+                        if (message.Content != null)
+                        {
+                            hasImage = message.Content.Any(c => c is ImageContent);
+                        }
+
+                        // Include full chat history in API call
+                        var parameters = new MessageParameters
+                        {
+                            Messages = chatMessages.Concat(new[] { message }).ToList(),
+                            Model = modelChosen,
+                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                            Stream = !hasImage, // Don't stream if we have an image
+                            Temperature = 1.0m,
+                            System = systemMessages
+                        };
+
+                        // Add user message to chat history
+                        chatMessages.Add(message);
+
+                        if ((bool)parameters.Stream)
+                        {
+                            markdown = string.Empty;
+                            var outputs = new List<MessageResponse>();
+                            await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
+                            {
+                                if (streamRes.Delta != null)
+                                {
+                                    markdown += streamRes.Delta.Text;
+                                }
+                                outputs.Add(streamRes);
+                            }
+                            res = outputs.Last();
+                        }
+                        else
+                        {
+                            res = await client.Messages.GetClaudeMessageAsync(parameters);
+                            markdown = res.Content[0].ToString() ?? "No answer";
+                        }
                     }
 
-                    Logger.LogInformation("Successfully received response from Claude API");
+                    Logger.LogInformation("Successfully received response from AI service");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Failed to get response from Claude API");
+                    Logger.LogError(ex, "Failed to get response from AI service");
                     ToastService.ShowToast(new ToastOptions()
                     {
                         ProviderName = "ClaudePage",
@@ -247,10 +276,15 @@ Use the following guidelines:
 
                 Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
 
+                // Calculate costs using separate rates for input and output tokens
+                var costs = GetModelCosts(modelChosen);
+                decimal inputCost = CalculateCost(res.Usage.InputTokens, costs.InputRate);
+                decimal outputCost = CalculateCost(res.Usage.OutputTokens, costs.OutputRate);
+
                 // Update user message with token count and cost
                 duetUserMessage.TokenCount = res.Usage.InputTokens;
-                duetUserMessage.MessageCost = CalculateCost(res.Usage.InputTokens, modelChosen);
-                DbContext.SaveChanges();
+                duetUserMessage.MessageCost = inputCost;
+                await dbContext.SaveChangesAsync();
 
                 // Create and save assistant message
                 var duetAssistantMessage = new DuetMessage
@@ -259,25 +293,25 @@ Use the following guidelines:
                     Role = "assistant",
                     Content = markdown,
                     TokenCount = res.Usage.OutputTokens,
-                    MessageCost = CalculateCost(res.Usage.OutputTokens, modelChosen)
+                    MessageCost = outputCost
                 };
-                DbContext.Add(duetAssistantMessage);
-                DbContext.SaveChanges();
+                dbContext.Add(duetAssistantMessage);
+                await dbContext.SaveChangesAsync();
 
                 // Add assistant response to chat history
                 var assistantMessage = new Message(RoleType.Assistant, markdown, null);
                 chatMessages.Add(assistantMessage);
 
                 // Generate thread title after first message exchange if not already set
-                if (newThread)
+                if (newThread && !modelChosen.StartsWith("deepseek"))
                 {
-                    await GenerateThreadTitle(client, modelChosen, textInput, markdown);
+                    await GenerateThreadTitle(AnthropicService.GetAnthropicClient(), modelChosen, textInput, markdown);
                     newThread = false;
                 }
 
                 // Update Tokens and Cost
                 UpdateTokensAsync(Tokens);
-                UpdateCostAsync(Cost + CalculateCost(Tokens, modelChosen));
+                UpdateCostAsync(Cost + inputCost + outputCost);
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
                 if (textInput != null)
@@ -297,7 +331,7 @@ Use the following guidelines:
             }
             catch (HttpRequestException ex)
             {
-                Logger.LogError(ex, "Network error while communicating with Anthropic API");
+                Logger.LogError(ex, "Network error while communicating with AI service");
                 ToastService.ShowToast(new ToastOptions()
                 {
                     ProviderName = "ClaudePage",
@@ -328,6 +362,7 @@ Use the following guidelines:
 
         private async Task GenerateThreadTitle(AnthropicClient client, string modelChosen, string userMessage, string assistantResponse)
         {
+            await using var dbContext = await DbContextFactory.CreateDbContextAsync();
             try
             {
                 var titlePrompt = new Message(
@@ -363,12 +398,17 @@ Use the following guidelines:
 
                 // Update thread title
                 currentThread.Title = generatedTitle;
-                DbContext.Update(currentThread);
-                DbContext.SaveChanges();
+                dbContext.Update(currentThread);
+                await dbContext.SaveChangesAsync();
+
+                // Calculate title generation costs
+                var costs = GetModelCosts(modelChosen);
+                decimal titleInputCost = CalculateCost(titleResponse.Usage.InputTokens, costs.InputRate);
+                decimal titleOutputCost = CalculateCost(titleResponse.Usage.OutputTokens, costs.OutputRate);
 
                 // Update tokens and cost
                 UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
-                UpdateCostAsync(Cost + CalculateCost(titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens, modelChosen));
+                UpdateCostAsync(Cost + titleInputCost + titleOutputCost);
             }
             catch (Exception ex)
             {
@@ -387,6 +427,8 @@ Use the following guidelines:
                     Model.Sonnet => AnthropicModels.Claude3Sonnet,
                     Model.Sonnet35 => AnthropicModels.Claude35Sonnet,
                     Model.Opus => AnthropicModels.Claude3Opus,
+                    Model.DeepSeek7B => "deepseek-7b",
+                    Model.DeepSeek67B => "deepseek-67b",
                     _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
                         $"Not expected model value: {modelValue}")
                 };
@@ -398,25 +440,32 @@ Use the following guidelines:
             }
         }
 
-        private decimal CalculateCost(int tokens, string model)
+        private ModelCosts GetModelCosts(string model)
         {
+            if (MODEL_COSTS.TryGetValue(model, out var costs))
+            {
+                return costs;
+            }
+
+            // Log warning for unrecognized model and use default rates
+            Logger.LogWarning("Unrecognized model: {Model}. Using default rates.", model);
+            return new ModelCosts(0.0003m, 0.0003m);
+        }
+
+        private static decimal CalculateCost(int tokens, decimal ratePerToken)
+        {
+            if (tokens < 0)
+            {
+                throw new ArgumentException("Token count cannot be negative", nameof(tokens));
+            }
+
             try
             {
-                decimal rate = model switch
-                {
-                    AnthropicModels.Claude3Haiku => 0.00025m,
-                    AnthropicModels.Claude3Sonnet => 0.0003m,
-                    AnthropicModels.Claude35Sonnet => 0.00035m,
-                    AnthropicModels.Claude3Opus => 0.0004m,
-                    _ => 0.0003m // Default rate
-                };
-
-                return tokens * rate / 1000; // Cost per 1000 tokens
+                return tokens * ratePerToken / 1000m; // Cost per 1000 tokens
             }
-            catch (Exception ex)
+            catch (OverflowException ex)
             {
-                Logger.LogError(ex, "Error calculating cost for tokens: {Tokens}, model: {Model}", tokens, model);
-                throw;
+                throw new OverflowException("Cost calculation resulted in overflow. Please check token count and rates.", ex);
             }
         }
     }
