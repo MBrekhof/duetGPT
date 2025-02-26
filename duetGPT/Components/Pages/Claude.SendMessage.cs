@@ -36,9 +36,6 @@ namespace duetGPT.Components.Pages
         [Inject]
         private IToastNotificationService _toastService { get; set; } = default!;
 
-        [Inject]
-        private Services.DeepSeekService _deepSeekService { get; set; } = default!;
-
         private record struct ModelCosts(decimal InputRate, decimal OutputRate);
 
         private static readonly Dictionary<string, ModelCosts> MODEL_COSTS = new()
@@ -46,9 +43,8 @@ namespace duetGPT.Components.Pages
             { AnthropicModels.Claude3Haiku, new ModelCosts(0.00025m, 0.00025m) },
             { AnthropicModels.Claude3Sonnet, new ModelCosts(0.0003m, 0.0003m) },
             { AnthropicModels.Claude35Sonnet, new ModelCosts(0.00035m, 0.00035m) },
-            { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) },
-            { DeepSeekModels.ChatModel, new ModelCosts(0.0001m, 0.0001m) },
-            { DeepSeekModels.ReasonerModel, new ModelCosts(0.0002m, 0.0002m) }
+            { "claude-3-7-sonnet-20250219", new ModelCosts(0.00035m, 0.00035m) },
+            { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) }
         };
 
         async Task SendClick()
@@ -183,38 +179,26 @@ Use the following guidelines:
 
                 try
                 {
-                    if (modelChosen == DeepSeekModels.ChatModel || modelChosen == DeepSeekModels.ReasonerModel)
-                    {
-                        // Handle DeepSeek models
-                        var response = await _deepSeekService.GetCompletionAsync(textInput, systemPrompt, modelChosen);
-                        markdown = response.Content;
-                        res = new MessageResponse
-                        {
-                            Content = new List<ContentBase> { new TextContent { Text = markdown } },
-                            Usage = new Usage { InputTokens = response.InputTokens, OutputTokens = response.OutputTokens }
-                        };
-                    }
-                    else
-                    {
-                        // Handle Anthropic models
-                        var client = _anthropicService.GetAnthropicClient();
-                        systemMessages = new List<SystemMessage>()
+
+                    // Handle Anthropic models
+                    var client = _anthropicService.GetAnthropicClient();
+                    systemMessages = new List<SystemMessage>()
                         {
                             new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
                         };
 
-                        Message message;
+                    Message message;
 
-                        // Create message with image if available
-                        var imageBytes = await GetCurrentImageBytes();
-                        if (imageBytes != null && CurrentImageType != null)
+                    // Create message with image if available
+                    var imageBytes = await GetCurrentImageBytes();
+                    if (imageBytes != null && CurrentImageType != null)
+                    {
+                        string base64Data = Convert.ToBase64String(imageBytes);
+
+                        message = new Message
                         {
-                            string base64Data = Convert.ToBase64String(imageBytes);
-
-                            message = new Message
-                            {
-                                Role = RoleType.User,
-                                Content = new List<ContentBase>
+                            Role = RoleType.User,
+                            Content = new List<ContentBase>
                                 {
                                     new ImageContent
                                     {
@@ -229,54 +213,54 @@ Use the following guidelines:
                                         Text = textInput
                                     }
                                 }
-                            };
-                        }
-                        else
-                        {
-                            message = new Message(RoleType.User, textInput, null);
-                        }
-
-                        // Explicitly check for image content
-                        bool hasImage = false;
-                        if (message.Content != null)
-                        {
-                            hasImage = message.Content.Any(c => c is ImageContent);
-                        }
-
-                        // Include full chat history in API call
-                        var parameters = new MessageParameters
-                        {
-                            Messages = chatMessages.Concat(new[] { message }).ToList(),
-                            Model = modelChosen,
-                            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-                            Stream = !hasImage, // Don't stream if we have an image
-                            Temperature = 1.0m,
-                            System = systemMessages
                         };
-
-                        // Add user message to chat history
-                        chatMessages.Add(message);
-
-                        if ((bool)parameters.Stream)
-                        {
-                            markdown = string.Empty;
-                            var outputs = new List<MessageResponse>();
-                            await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
-                            {
-                                if (streamRes.Delta != null)
-                                {
-                                    markdown += streamRes.Delta.Text;
-                                }
-                                outputs.Add(streamRes);
-                            }
-                            res = outputs.Last();
-                        }
-                        else
-                        {
-                            res = await client.Messages.GetClaudeMessageAsync(parameters);
-                            markdown = res.Content[0].ToString() ?? "No answer";
-                        }
                     }
+                    else
+                    {
+                        message = new Message(RoleType.User, textInput, null);
+                    }
+
+                    // Explicitly check for image content
+                    bool hasImage = false;
+                    if (message.Content != null)
+                    {
+                        hasImage = message.Content.Any(c => c is ImageContent);
+                    }
+
+                    // Include full chat history in API call
+                    var parameters = new MessageParameters
+                    {
+                        Messages = chatMessages.Concat(new[] { message }).ToList(),
+                        Model = modelChosen,
+                        MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                        Stream = !hasImage, // Don't stream if we have an image
+                        Temperature = 1.0m,
+                        System = systemMessages
+                    };
+
+                    // Add user message to chat history
+                    chatMessages.Add(message);
+
+                    if ((bool)parameters.Stream)
+                    {
+                        markdown = string.Empty;
+                        var outputs = new List<MessageResponse>();
+                        await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
+                        {
+                            if (streamRes.Delta != null)
+                            {
+                                markdown += streamRes.Delta.Text;
+                            }
+                            outputs.Add(streamRes);
+                        }
+                        res = outputs.Last();
+                    }
+                    else
+                    {
+                        res = await client.Messages.GetClaudeMessageAsync(parameters);
+                        markdown = res.Content[0].ToString() ?? "No answer";
+                    }
+
 
                     _logger.LogInformation("Successfully received response from AI service");
                 }
@@ -322,11 +306,12 @@ Use the following guidelines:
                 var assistantMessage = new Message(RoleType.Assistant, markdown, null);
                 chatMessages.Add(assistantMessage);
 
-                // Generate thread title after first message exchange if not already set
-                if (newThread && modelChosen != DeepSeekModels.ChatModel && modelChosen != DeepSeekModels.ReasonerModel)
+                // Generate thread title if this is a new thread or needs a title update
+                if (newThread)
                 {
-                    await GenerateThreadTitle(_anthropicService.GetAnthropicClient(), modelChosen, textInput, markdown);
-                    newThread = false;
+                    var client = _anthropicService.GetAnthropicClient();
+                    await GenerateThreadTitle(client, modelChosen, textInput, markdown);
+                    newThread = false; // Reset the flag after generating the title
                 }
 
                 // Update Tokens and Cost
@@ -446,9 +431,9 @@ Use the following guidelines:
                     Model.Haiku35 => "claude-3-5-haiku-20241022",
                     Model.Sonnet => AnthropicModels.Claude3Sonnet,
                     Model.Sonnet35 => AnthropicModels.Claude35Sonnet,
+                    Model.Sonnet37 => "claude-3-7-sonnet-20250219",
                     Model.Opus => AnthropicModels.Claude3Opus,
-                    Model.DeepSeek7B => DeepSeekModels.ChatModel,
-                    Model.DeepSeekR1 => DeepSeekModels.ReasonerModel,
+
                     _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
                         $"Not expected model value: {modelValue}")
                 };

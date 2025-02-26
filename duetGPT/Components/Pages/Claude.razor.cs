@@ -29,12 +29,6 @@ namespace duetGPT.Components.Pages
         public required AnthropicService AnthropicService { get; set; }
 
         /// <summary>
-        /// Service for interacting with the DeepSeek AI API.
-        /// </summary>
-        [Inject]
-        public required DeepSeekService DeepSeekService { get; set; }
-
-        /// <summary>
         /// Service for managing knowledge base operations.
         /// </summary>
         [Inject]
@@ -130,12 +124,11 @@ namespace duetGPT.Components.Pages
 
         public enum Model
         {
+            Sonnet37,
             Sonnet35,
             Haiku35,
             Sonnet,
-            Opus,
-            DeepSeek7B,
-            DeepSeekR1
+            Opus
         }
 
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();

@@ -1,4 +1,5 @@
-﻿using OpenAI;
+﻿
+using OpenAI;
 using Pgvector;
 
 namespace duetGPT.Services

@@ -24,7 +24,7 @@ namespace duetGPT.Data
 
         public int TotalTokens { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+       // [Column(TypeName = "numeric(18,2)")]
         public decimal Cost { get; set; }
 
         public List<ThreadDocument> ThreadDocuments { get; set; }

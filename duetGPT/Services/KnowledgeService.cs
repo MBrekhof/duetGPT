@@ -50,6 +50,40 @@ namespace duetGPT.Services
             .FromSqlRaw(sql)
             .ToListAsync();
 
+        // Update embedding costs for the retrieved knowledge items
+        if (queryResults.Any())
+        {
+          try
+          {
+            // Calculate cost per item (distribute evenly among retrieved items)
+            decimal costPerItem = embeddingResult.Cost / queryResults.Count;
+
+            foreach (var result in queryResults)
+            {
+              // Find the corresponding Knowledge entity and update its embedding cost
+              var knowledge = await _dbContext.Set<Knowledge>()
+                  .Where(k => k.RagDataId == result.Id)
+                  .FirstOrDefaultAsync();
+
+              if (knowledge != null)
+              {
+                // Add the new embedding cost to the existing one
+                knowledge.EmbeddingCost = (knowledge.EmbeddingCost ?? 0) + costPerItem;
+                _logger.LogInformation("Updated embedding cost for knowledge ID {Id} to {Cost}",
+                    knowledge.RagDataId, knowledge.EmbeddingCost);
+              }
+            }
+
+            // Save the changes to the database
+            await _dbContext.SaveChangesAsync();
+          }
+          catch (Exception ex)
+          {
+            _logger.LogError(ex, "Error updating embedding costs");
+            // Don't throw - we still want to return the knowledge results
+          }
+        }
+
         // Map to KnowledgeResult with metadata
         var relevantKnowledge = queryResults.Select(k => new KnowledgeResult
         {
