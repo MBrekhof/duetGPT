@@ -66,6 +66,26 @@ namespace duetGPT.Components.Pages
         private List<string> formattedMessages = new();
 
         /// <summary>
+        /// Content of Claude's thinking process when extended thinking is enabled
+        /// </summary>
+        public string ThinkingContent { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Flag to enable or disable extended thinking
+        /// </summary>
+        public bool EnableExtendedThinking { get; set; } = false;
+
+        /// <summary>
+        /// Checks if extended thinking is available for the current model
+        /// </summary>
+        /// <returns>True if extended thinking is available, false otherwise</returns>
+        private bool IsExtendedThinkingAvailable()
+        {
+            // Only available for Claude 3.7 Sonnet
+            return ModelValue == Model.Sonnet37;
+        }
+
+        /// <summary>
         /// Loads messages from the database for the current thread and converts them to Anthropic Message format
         /// </summary>
         private async Task LoadMessagesFromDb()

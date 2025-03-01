@@ -140,6 +140,28 @@
         gap: 8px;
         margin-top: 10px;
     }
+    .thinking-content {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        width: 100%;
+    }
+    .thinking-box {
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        overflow-x: auto;
+    }
+    .warning-text {
+        color: #dc3545;
+        font-size: 0.8rem;
+        margin-top: 5px;
+    }
 </style>
 
 <DxToastProvider Name="ClaudePage"
@@ -147,7 +169,8 @@
                  AnimationType="ToastAnimationType.Slide"
                  HorizontalAlignment="HorizontalAlignment.Center"
                  DisplayTime="TimeSpan.FromSeconds(3)"
-                 Width="320px" />
+                 Width="320px">
+</DxToastProvider>
 
 <div class="header-container">
     <div class="title">Chat Application</div>
@@ -173,11 +196,12 @@
 </div>
 
 <div class="main-content">
-    <DxLoadingPanel @bind-Visible="@running" IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
-                    IsContentBlocked="true"
-                    ApplyBackgroundShading="true"
-                    IndicatorAreaVisible="false"
-                    Text="thinking..." >
+    <DxLoadingPanel @bind-Visible="@running" 
+                   IndicatorAnimationType="WaitIndicatorAnimationType.Pulse"
+                   IsContentBlocked="true"
+                   ApplyBackgroundShading="true"
+                   IndicatorAreaVisible="false"
+                   Text="thinking...">
         <div class="messages-container">
             @{
                 var index = 0;
@@ -188,6 +212,16 @@
                     </div>
                     index++;
                 }
+            }
+            
+            @if (!string.IsNullOrEmpty(ThinkingContent))
+            {
+                <div class="thinking-content">
+                    <h3>Claude's Thinking Process</h3>
+                    <div class="thinking-box">
+                        @((MarkupString)ThinkingContent)
+                    </div>
+                </div>
             }
         </div>
     </DxLoadingPanel>
@@ -204,15 +238,26 @@
                 <DxCheckBox @bind-Checked="@EnableWebSearch" />
                 <span>Enable Web Search</span>
             </div>
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableExtendedThinking" />
+                <span>Enable Extended Thinking</span>
+            </div>
+            @if (EnableExtendedThinking && !IsExtendedThinkingAvailable())
+            {
+                <div class="warning-text">Only available with Claude 3.7 Sonnet</div>
+            }
         </div>
         <div class="info-box">
             <div class="info-label">Select Files:</div>
             <DxListBox Data="@AvailableFiles"
-                       @bind-Values="@SelectedFiles"
-                       TextFieldName="FileName"
-                       ValueFieldName="Id"
-                       SelectionMode="ListBoxSelectionMode.Multiple"
-                       ShowCheckboxes="true" SizeMode="SizeMode.Small"  ListBoxHeight="@null"/>
+                      @bind-Values="@SelectedFiles"
+                      TextFieldName="FileName"
+                      ValueFieldName="Id"
+                      SelectionMode="ListBoxSelectionMode.Multiple"
+                      ShowCheckboxes="true" 
+                      SizeMode="SizeMode.Small"  
+                      ListBoxHeight="@null">
+            </DxListBox>
         </div>
         <div class="info-box">
             <div class="info-label">Upload Image:</div>
@@ -234,8 +279,8 @@
 </div>
 
 <DxPopup HeaderText="Confirm New Thread"
-         @bind-Visible="@IsNewThreadPopupVisible"
-         ShowFooter="true">
+        @bind-Visible="@IsNewThreadPopupVisible"
+        ShowFooter="true">
     <BodyTemplate>
         Are you sure you want to start a new thread? This will clear the current conversation.
     </BodyTemplate>
@@ -246,11 +291,11 @@
 </DxPopup>
 
 <DxPopup @bind-Visible="@IsImagePopupVisible"
-         ShowFooter="false"
-         CloseOnEscape="true"
-         CloseOnOutsideClick="true"
-         Width="auto"
-         Height="auto">
+        ShowFooter="false"
+        CloseOnEscape="true"
+        CloseOnOutsideClick="true"
+        Width="auto"
+        Height="auto">
     <HeaderTemplate>
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <span>Image Preview</span>
