@@ -79,6 +79,7 @@
         border-radius: 5px;
         text-align: left;
         max-width: 60%;
+        position: relative;
     }
     .message:nth-child(odd) {
         text-align: right;
@@ -162,6 +163,19 @@
         font-size: 0.8rem;
         margin-top: 5px;
     }
+    .thinking-button {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background-color: transparent;
+        border: none;
+        color: #007bff;
+        cursor: pointer;
+        font-size: 1.2rem;
+    }
+    .thinking-button:hover {
+        color: #0056b3;
+    }
 </style>
 
 <DxToastProvider Name="ClaudePage"
@@ -207,21 +221,20 @@
                 var index = 0;
                 foreach (var message in formattedMessages)
                 {
+                    var isAssistantMessage = index % 2 != 0;
+                    var hasThinking = isAssistantMessage && !string.IsNullOrEmpty(ThinkingContent);
+                    
                     <div class="message @(index % 2 == 0 ? "bg-blue" : "bg-green")">
                         @(((MarkupString)message))
+                        @if (hasThinking)
+                        {
+                            <button class="thinking-button" @onclick="@(() => IsThinkingPopupVisible = true)" title="View Claude's thinking process">
+                                <i class="fas fa-brain"></i>
+                            </button>
+                        }
                     </div>
                     index++;
                 }
-            }
-            
-            @if (!string.IsNullOrEmpty(ThinkingContent))
-            {
-                <div class="thinking-content">
-                    <h3>Claude's Thinking Process</h3>
-                    <div class="thinking-box">
-                        @((MarkupString)ThinkingContent)
-                    </div>
-                </div>
             }
         </div>
     </DxLoadingPanel>
@@ -295,7 +308,8 @@
         CloseOnEscape="true"
         CloseOnOutsideClick="true"
         Width="auto"
-        Height="auto">
+        Height="auto"
+        HeaderText="Image Preview">
     <HeaderTemplate>
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
             <span>Image Preview</span>
@@ -308,4 +322,21 @@
             <img src="@ImageUrl" class="popup-image" alt="Full size image" />
         }
     </BodyTemplate>
+</DxPopup>
+
+<DxPopup HeaderText="Claude's Thinking Process"
+        @bind-Visible="@IsThinkingPopupVisible"
+        ShowFooter="true"
+        Width="800px"
+        MaxHeight="80vh"
+        CloseOnEscape="true"
+        CloseOnOutsideClick="true">
+    <BodyTemplate>
+        <div class="thinking-box">
+            @((MarkupString)ThinkingContent)
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-primary" @onclick="@(() => IsThinkingPopupVisible = false)">Close</button>
+    </FooterTemplate>
 </DxPopup>

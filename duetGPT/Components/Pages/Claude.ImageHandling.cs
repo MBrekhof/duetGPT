@@ -13,15 +13,15 @@ namespace duetGPT.Components.Pages
     private string? ImageUrl { get; set; }
     private string? CurrentImagePath { get; set; }  // Store file path instead of byte array
     private string? CurrentImageType { get; set; }
-    private bool IsNewThreadPopupVisible { get; set; }
-    private bool IsImagePopupVisible { get; set; }
+    //private bool IsNewThreadPopupVisible { get; set; }
+    //private bool IsImagePopupVisible { get; set; }
     private const int MaxImageSize = 20 * 1024 * 1024; // 20MB limit
     private const string TempImageFolder = "TempImages";
 
-    private void ShowImagePopup()
-    {
-      IsImagePopupVisible = true;
-    }
+    //private void ShowImagePopup()
+    //{
+    //  IsImagePopupVisible = true;
+    //}
 
     private async Task HandleImageUpload(InputFileChangeEventArgs e)
     {
@@ -125,10 +125,10 @@ namespace duetGPT.Components.Pages
       }
     }
 
-    private void ShowNewThreadConfirmation()
-    {
-      IsNewThreadPopupVisible = true;
-    }
+    //private void ShowNewThreadConfirmation()
+    //{
+    //  IsNewThreadPopupVisible = true;
+    //}
 
     private async Task ConfirmNewThread()
     {

@@ -76,6 +76,21 @@ namespace duetGPT.Components.Pages
         public bool EnableExtendedThinking { get; set; } = false;
 
         /// <summary>
+        /// Flag to control visibility of the thinking content popup
+        /// </summary>
+        public bool IsThinkingPopupVisible { get; set; } = false;
+
+        /// <summary>
+        /// Flag to control visibility of the image preview popup
+        /// </summary>
+        public bool IsImagePopupVisible { get; set; } = false;
+
+        /// <summary>
+        /// Flag to control visibility of the new thread confirmation popup
+        /// </summary>
+        public bool IsNewThreadPopupVisible { get; set; } = false;
+
+        /// <summary>
         /// Checks if extended thinking is available for the current model
         /// </summary>
         /// <returns>True if extended thinking is available, false otherwise</returns>
@@ -154,6 +169,24 @@ namespace duetGPT.Components.Pages
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();
 
         private Model ModelValue { get; set; }
+
+        /// <summary>
+        /// Shows the image popup
+        /// </summary>
+        private void ShowImagePopup()
+        {
+            IsImagePopupVisible = true;
+            StateHasChanged();
+        }
+
+        /// <summary>
+        /// Shows the new thread confirmation popup
+        /// </summary>
+        private void ShowNewThreadConfirmation()
+        {
+            IsNewThreadPopupVisible = true;
+            StateHasChanged();
+        }
 
         protected override async Task OnInitializedAsync()
         {
