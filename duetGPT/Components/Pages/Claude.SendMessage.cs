@@ -223,35 +223,42 @@ Use the following guidelines:
 
           // Check if extended thinking is enabled and available for the current model
           bool useStandardApi = false;
-                    var client = _anthropicService.GetAnthropicClient();
-           if (EnableExtendedThinking && IsExtendedThinkingAvailable())
+          var client = _anthropicService.GetAnthropicClient();
+          if (EnableExtendedThinking && IsExtendedThinkingAvailable())
           {
             _logger.LogInformation("Enabling extended thinking for this request");
 
             try
             {
+              // Create system messages for extended thinking
+              var systemMessages = new List<SystemMessage>()
+              {
+                  new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+              };
+
               // Convert standard parameters to extended request
               var extendedRequest = new MessageParameters()
               {
-                  Messages = chatMessages.Concat(new[] { message }).ToList(),
-                  Model = AnthropicModels.Claude37Sonnet,
+                Messages = chatMessages.Concat(new[] { message }).ToList(),
+                Model = AnthropicModels.Claude37Sonnet,
                 Stream = false,
                 MaxTokens = 20000,
                 Temperature = 1.0m,
+                System = systemMessages,  // Include system messages with knowledge content
                 Thinking = new Anthropic.SDK.Messaging.ThinkingParameters()
                 {
                   BudgetTokens = 16000  // Allocate 16,000 tokens for thinking
                 }
               };
 
-          
+
               // Call the custom API
-              var extendedResponse =  await client.Messages.GetClaudeMessageAsync(extendedRequest);
+              var extendedResponse = await client.Messages.GetClaudeMessageAsync(extendedRequest);
 
-                            // Extract the response
-               markdown = string.Join("\n", extendedResponse.Message.ToString());
+              // Extract the response
+              markdown = string.Join("\n", extendedResponse.Message.ToString());
 
-                            // Extract thinking content using the helper method
+              // Extract thinking content using the helper method
               var thinkingContent = extendedResponse.Message.ThinkingContent;
               if (!string.IsNullOrEmpty(thinkingContent))
               {
@@ -286,7 +293,7 @@ Use the following guidelines:
           if (useStandardApi)
           {
             // Handle Anthropic models with standard API
- 
+
             systemMessages = new List<SystemMessage>()
                             {
                                 new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
