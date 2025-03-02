@@ -223,41 +223,36 @@ Use the following guidelines:
 
           // Check if extended thinking is enabled and available for the current model
           bool useStandardApi = false;
-          if (EnableExtendedThinking && IsExtendedThinkingAvailable())
+                    var client = _anthropicService.GetAnthropicClient();
+           if (EnableExtendedThinking && IsExtendedThinkingAvailable())
           {
             _logger.LogInformation("Enabling extended thinking for this request");
 
             try
             {
               // Convert standard parameters to extended request
-              var extendedRequest = new ExtendedMessageRequest
+              var extendedRequest = new MessageParameters()
               {
-                Model = modelChosen,
-                System = systemPrompt,
-                MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+                  Messages = chatMessages.Concat(new[] { message }).ToList(),
+                  Model = AnthropicModels.Claude37Sonnet,
+                Stream = false,
+                MaxTokens = 20000,
                 Temperature = 1.0m,
-                ExtendedThinking = true
+                Thinking = new Anthropic.SDK.Messaging.ThinkingParameters()
+                {
+                  BudgetTokens = 16000  // Allocate 16,000 tokens for thinking
+                }
               };
 
-              // Convert messages to the format expected by the custom API
-              extendedRequest.Messages = chatMessages.Concat(new[] { message })
-                  .Select(m => new MessageItem
-                  {
-                    Role = m.Role.ToString().ToLower(),
-                    Content = m.Content is List<ContentBase> contentList
-                          ? string.Join("\n", contentList.OfType<TextContent>().Select(tc => tc.Text))
-                          : m.Content.ToString()
-                  })
-                  .ToList();
-
+          
               // Call the custom API
-              var extendedResponse = await _anthropicService.SendMessageWithExtendedThinkingAsync(extendedRequest);
+              var extendedResponse =  await client.Messages.GetClaudeMessageAsync(extendedRequest);
 
-              // Extract the response
-              markdown = string.Join("\n", extendedResponse.Content.Select(c => c.Text));
+                            // Extract the response
+               markdown = string.Join("\n", extendedResponse.Message.ToString());
 
-              // Extract thinking content using the helper method
-              var thinkingContent = extendedResponse.GetThinkingContent();
+                            // Extract thinking content using the helper method
+              var thinkingContent = extendedResponse.Message.ThinkingContent;
               if (!string.IsNullOrEmpty(thinkingContent))
               {
                 ThinkingContent = thinkingContent;
@@ -272,7 +267,7 @@ Use the following guidelines:
               // Create a compatible response object for the rest of the code
               res = new MessageResponse
               {
-                Content = extendedResponse.Content.Select(c => new TextContent { Text = c.Text }).Cast<ContentBase>().ToList(),
+                Content = extendedResponse.Content,
                 Usage = new Usage { InputTokens = extendedResponse.Usage.InputTokens, OutputTokens = extendedResponse.Usage.OutputTokens }
               };
             }
@@ -291,7 +286,7 @@ Use the following guidelines:
           if (useStandardApi)
           {
             // Handle Anthropic models with standard API
-            var client = _anthropicService.GetAnthropicClient();
+ 
             systemMessages = new List<SystemMessage>()
                             {
                                 new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Serialization;
 
 namespace duetGPT.Data
@@ -32,8 +33,10 @@ namespace duetGPT.Data
     [JsonPropertyName("thinking")]
     public string Thinking { get; set; }
 
-    // Improved method to extract thinking from beta response
-    // This will handle different response formats from the API
+    [JsonPropertyName("thinking_content")]
+    public List<ThinkingContentItem> ThinkingContent { get; set; }
+
+    // Improved method to extract thinking from response
     public string GetThinkingContent()
     {
       // If thinking is directly available in the response, return it
@@ -42,11 +45,16 @@ namespace duetGPT.Data
         return Thinking;
       }
 
+      // Check if thinking might be in the thinking_content list
+      if (ThinkingContent != null && ThinkingContent.Count > 0)
+      {
+        return string.Join("\n", ThinkingContent.Select(tc => tc.Text));
+      }
+
       // Check if thinking might be in a special content block
       if (Content != null)
       {
         // Look for any content items that might contain thinking information
-        // Some API versions might include thinking as a special content type or in metadata
         foreach (var item in Content)
         {
           if (item.Type == "thinking" || (item.Type == "text" && item.Text?.Contains("<thinking>") == true))
@@ -56,13 +64,21 @@ namespace duetGPT.Data
         }
       }
 
-      // If we couldn't find thinking content, return an empty string instead of a generic message
-      // This allows the UI to properly handle the case where thinking is not available
+      // If we couldn't find thinking content, return an empty string
       return string.Empty;
     }
   }
 
   public class ContentItem
+  {
+    [JsonPropertyName("type")]
+    public string Type { get; set; }
+
+    [JsonPropertyName("text")]
+    public string Text { get; set; }
+  }
+
+  public class ThinkingContentItem
   {
     [JsonPropertyName("type")]
     public string Type { get; set; }

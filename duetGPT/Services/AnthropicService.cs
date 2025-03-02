@@ -91,7 +91,7 @@ namespace duetGPT.Services
                 _logger.LogInformation("Sending message with extended thinking enabled");
                 var client = GetCustomHttpClient();
 
-                // Create a modified request object that explicitly includes the extended_thinking parameter
+                // Create a modified request object that includes the thinking parameter
                 var requestJson = new
                 {
                     model = request.Model,
@@ -99,7 +99,7 @@ namespace duetGPT.Services
                     system = request.System,
                     max_tokens = request.MaxTokens,
                     temperature = request.Temperature,
-                    extended_thinking = true  // Explicitly include this parameter
+                    thinking = request.Thinking  // Use the structured thinking parameter
                 };
 
                 // Serialize the request manually
@@ -134,13 +134,14 @@ namespace duetGPT.Services
                 }
 
                 // Log whether thinking content was found
-                if (string.IsNullOrEmpty(result.Thinking))
+                var thinkingContent = result.GetThinkingContent();
+                if (string.IsNullOrEmpty(thinkingContent))
                 {
-                    _logger.LogWarning("Thinking field not found in direct response. Will attempt to extract from content.");
+                    _logger.LogWarning("No thinking content found in the response.");
                 }
                 else
                 {
-                    _logger.LogInformation("Thinking field found in response with length: {Length}", result.Thinking.Length);
+                    _logger.LogInformation("Thinking content found with length: {Length}", thinkingContent.Length);
                 }
 
                 _logger.LogInformation("Successfully received extended thinking response");

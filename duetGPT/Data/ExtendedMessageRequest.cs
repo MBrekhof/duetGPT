@@ -20,8 +20,14 @@ namespace duetGPT.Data
     [JsonPropertyName("temperature")]
     public decimal Temperature { get; set; }
 
-    [JsonPropertyName("extended_thinking")]
-    public bool ExtendedThinking { get; set; }
+    [JsonPropertyName("thinking")]
+    public ThinkingParameters Thinking { get; set; }
+  }
+
+  public class ThinkingParameters
+  {
+    [JsonPropertyName("budget_tokens")]
+    public int BudgetTokens { get; set; }
   }
 
   public class MessageItem

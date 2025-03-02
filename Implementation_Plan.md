@@ -1,376 +1,388 @@
-# Implementation Plan for Extended Thinking with Claude 3.7 Sonnet
+# Implementation Plan: Fixing Extended Thinking for Claude 3.7 Sonnet
 
-## Overview
+## Problem Statement
 
-This document outlines the step-by-step plan to implement the Extended Thinking feature with Claude 3.7 Sonnet in the duetGPT application. The feature allows users to see Claude's reasoning process, providing transparency and insight into how the AI arrives at its answers.
+The Extended Thinking feature for Claude 3.7 Sonnet is not functioning correctly in the duetGPT application. When attempting to use this feature, the application receives a 400 Bad Request error from the Anthropic API. The error occurs in `AnthropicService.SendMessageWithExtendedThinkingAsync()` on line 127.
 
-## Implementation Steps
+## Root Cause Analysis
 
-### 1. Create Custom Request and Response Models
+After examining the code and comparing it with the example provided, I've identified the following issues:
 
-We need to create custom models to handle the extended_thinking parameter and response:
+1. **Request Format Mismatch**: The current implementation uses a boolean flag `extended_thinking: true`, but the Anthropic API expects a structured `thinking` parameter with a `budget_tokens` property.
 
-- Create `ExtendedMessageRequest.cs` in the Data folder
-- Create `ExtendedMessageResponse.cs` in the Data folder
+2. **API Version Compatibility**: The code is using the beta header `anthropic-beta: thinking-2024-03-01`, which may be correct but needs to be used with the proper request format.
 
-### 2. Extend AnthropicService
+3. **Response Handling**: The current implementation may not correctly handle the thinking content in the response.
 
-We need to extend the AnthropicService class to support direct API calls with the extended_thinking parameter:
+## Implementation Plan
 
-- Add a method to create a custom HTTP client
-- Implement the `SendMessageWithExtendedThinkingAsync` method
+### 1. Update the ExtendedMessageRequest Class
 
-### 3. Update Claude Component
+The request model needs to be updated to match the expected format by the Anthropic API:
 
-We need to update the Claude component to use the extended thinking feature:
-
-- Add a property to store the thinking content
-- Add a toggle to enable/disable extended thinking
-- Update the `SendClick()` method to use the custom implementation when extended thinking is enabled
-
-### 4. Add UI Elements
-
-We need to add UI elements to display the thinking content:
-
-- Add a toggle switch in the sidebar
-- Add a section to display the thinking content when available
-
-### 5. Add CSS Styling
-
-We need to add CSS styling for the new UI elements:
-
-- Style the thinking content section
-- Style the toggle switch
-
-## Detailed Implementation
-
-### 1. Create Custom Request and Response Models
-
-#### ExtendedMessageRequest.cs
 ```csharp
+// duetGPT/Data/ExtendedMessageRequest.cs
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace duetGPT.Data
 {
-    public class ExtendedMessageRequest
-    {
-        [JsonPropertyName("model")]
-        public string Model { get; set; }
+  public class ExtendedMessageRequest
+  {
+    [JsonPropertyName("model")]
+    public string Model { get; set; }
 
-        [JsonPropertyName("messages")]
-        public List<MessageItem> Messages { get; set; }
+    [JsonPropertyName("messages")]
+    public List<MessageItem> Messages { get; set; }
 
-        [JsonPropertyName("system")]
-        public string System { get; set; }
+    [JsonPropertyName("system")]
+    public string System { get; set; }
 
-        [JsonPropertyName("max_tokens")]
-        public int MaxTokens { get; set; }
+    [JsonPropertyName("max_tokens")]
+    public int MaxTokens { get; set; }
 
-        [JsonPropertyName("temperature")]
-        public decimal Temperature { get; set; }
+    [JsonPropertyName("temperature")]
+    public decimal Temperature { get; set; }
 
-        [JsonPropertyName("extended_thinking")]
-        public bool ExtendedThinking { get; set; }
-    }
+    [JsonPropertyName("thinking")]
+    public ThinkingParameters Thinking { get; set; }
+  }
 
-    public class MessageItem
-    {
-        [JsonPropertyName("role")]
-        public string Role { get; set; }
+  public class ThinkingParameters
+  {
+    [JsonPropertyName("budget_tokens")]
+    public int BudgetTokens { get; set; }
+  }
 
-        [JsonPropertyName("content")]
-        public string Content { get; set; }
-    }
+  public class MessageItem
+  {
+    [JsonPropertyName("role")]
+    public string Role { get; set; }
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; }
+  }
 }
 ```
 
-#### ExtendedMessageResponse.cs
+### 2. Update the ExtendedMessageResponse Class
+
+Ensure the response model can properly handle the thinking content:
+
 ```csharp
+// duetGPT/Data/ExtendedMessageResponse.cs
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace duetGPT.Data
 {
-    public class ExtendedMessageResponse
+  public class ExtendedMessageResponse
+  {
+    [JsonPropertyName("id")]
+    public string Id { get; set; }
+
+    [JsonPropertyName("type")]
+    public string Type { get; set; }
+
+    [JsonPropertyName("role")]
+    public string Role { get; set; }
+
+    [JsonPropertyName("content")]
+    public List<ContentItem> Content { get; set; }
+
+    [JsonPropertyName("model")]
+    public string Model { get; set; }
+
+    [JsonPropertyName("stop_reason")]
+    public string StopReason { get; set; }
+
+    [JsonPropertyName("stop_sequence")]
+    public string StopSequence { get; set; }
+
+    [JsonPropertyName("usage")]
+    public UsageInfo Usage { get; set; }
+
+    [JsonPropertyName("thinking")]
+    public string Thinking { get; set; }
+
+    [JsonPropertyName("thinking_content")]
+    public List<ThinkingContentItem> ThinkingContent { get; set; }
+
+    // Improved method to extract thinking from response
+    public string GetThinkingContent()
     {
-        [JsonPropertyName("id")]
-        public string Id { get; set; }
+      // If thinking is directly available in the response, return it
+      if (!string.IsNullOrEmpty(Thinking))
+      {
+        return Thinking;
+      }
 
-        [JsonPropertyName("type")]
-        public string Type { get; set; }
+      // Check if thinking might be in the thinking_content list
+      if (ThinkingContent != null && ThinkingContent.Count > 0)
+      {
+        return string.Join("\n", ThinkingContent.Select(tc => tc.Text));
+      }
 
-        [JsonPropertyName("role")]
-        public string Role { get; set; }
+      // Check if thinking might be in a special content block
+      if (Content != null)
+      {
+        // Look for any content items that might contain thinking information
+        foreach (var item in Content)
+        {
+          if (item.Type == "thinking" || (item.Type == "text" && item.Text?.Contains("<thinking>") == true))
+          {
+            return item.Text;
+          }
+        }
+      }
 
-        [JsonPropertyName("content")]
-        public List<ContentItem> Content { get; set; }
-
-        [JsonPropertyName("model")]
-        public string Model { get; set; }
-
-        [JsonPropertyName("stop_reason")]
-        public string StopReason { get; set; }
-
-        [JsonPropertyName("stop_sequence")]
-        public string StopSequence { get; set; }
-
-        [JsonPropertyName("usage")]
-        public UsageInfo Usage { get; set; }
-
-        [JsonPropertyName("thinking")]
-        public string Thinking { get; set; }
+      // If we couldn't find thinking content, return an empty string
+      return string.Empty;
     }
+  }
 
-    public class ContentItem
-    {
-        [JsonPropertyName("type")]
-        public string Type { get; set; }
+  public class ContentItem
+  {
+    [JsonPropertyName("type")]
+    public string Type { get; set; }
 
-        [JsonPropertyName("text")]
-        public string Text { get; set; }
-    }
+    [JsonPropertyName("text")]
+    public string Text { get; set; }
+  }
 
-    public class UsageInfo
-    {
-        [JsonPropertyName("input_tokens")]
-        public int InputTokens { get; set; }
+  public class ThinkingContentItem
+  {
+    [JsonPropertyName("type")]
+    public string Type { get; set; }
 
-        [JsonPropertyName("output_tokens")]
-        public int OutputTokens { get; set; }
-    }
+    [JsonPropertyName("text")]
+    public string Text { get; set; }
+  }
+
+  public class UsageInfo
+  {
+    [JsonPropertyName("input_tokens")]
+    public int InputTokens { get; set; }
+
+    [JsonPropertyName("output_tokens")]
+    public int OutputTokens { get; set; }
+  }
 }
 ```
 
-### 2. Extend AnthropicService
+### 3. Update the AnthropicService
 
-Update AnthropicService.cs to include the following methods:
+Modify the `SendMessageWithExtendedThinkingAsync` method to use the new structure:
 
 ```csharp
-using System.Net.Http.Headers;
-using System.Text.Json;
-using duetGPT.Data;
-
-// Add to existing AnthropicService class
-
-private HttpClient GetCustomHttpClient()
-{
-    var apiKey = _configuration["Anthropic:ApiKey"];
-    if (string.IsNullOrEmpty(apiKey))
-    {
-        _logger.LogError("Anthropic API key is not configured");
-        throw new ArgumentException("Anthropic API key is not configured.");
-    }
-
-    var client = new HttpClient();
-    client.BaseAddress = new Uri("https://api.anthropic.com");
-    client.DefaultRequestHeaders.Accept.Clear();
-    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-    client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-    client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-    return client;
-}
-
+// duetGPT/Services/AnthropicService.cs
 public async Task<ExtendedMessageResponse> SendMessageWithExtendedThinkingAsync(ExtendedMessageRequest request)
 {
     try
     {
+        _logger.LogInformation("Sending message with extended thinking enabled");
         var client = GetCustomHttpClient();
-        
-        // Add the extended_thinking parameter to the request
-        request.ExtendedThinking = true;
-        
-        var response = await client.PostAsJsonAsync("/v1/messages", request);
+
+        // Create a modified request object that includes the thinking parameter
+        var requestJson = new
+        {
+            model = request.Model,
+            messages = request.Messages,
+            system = request.System,
+            max_tokens = request.MaxTokens,
+            temperature = request.Temperature,
+            thinking = request.Thinking  // Use the structured thinking parameter
+        };
+
+        // Serialize the request manually
+        var jsonContent = JsonSerializer.Serialize(requestJson);
+        _logger.LogDebug("Request JSON: {Json}", jsonContent);
+
+        var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        // Log the request headers for debugging
+        foreach (var header in client.DefaultRequestHeaders)
+        {
+            _logger.LogDebug("Request header: {Key} = {Value}", header.Key, string.Join(", ", header.Value));
+        }
+
+        var response = await client.PostAsync("/v1/messages", content);
+
+        // Log the response status code
+        _logger.LogDebug("Response status code: {StatusCode}", response.StatusCode);
+
+        // Read the response content even if it's an error
+        var responseContent = await response.Content.ReadAsStringAsync();
+        _logger.LogDebug("Response content: {Content}", responseContent);
+
+        // Now check if the response was successful
         response.EnsureSuccessStatusCode();
-        
-        var content = await response.Content.ReadAsStringAsync();
-        var result = JsonSerializer.Deserialize<ExtendedMessageResponse>(content);
-        
+
+        var result = JsonSerializer.Deserialize<ExtendedMessageResponse>(responseContent);
+
+        if (result == null)
+        {
+            throw new InvalidOperationException("Failed to deserialize response from Anthropic API");
+        }
+
+        // Log whether thinking content was found
+        var thinkingContent = result.GetThinkingContent();
+        if (string.IsNullOrEmpty(thinkingContent))
+        {
+            _logger.LogWarning("No thinking content found in the response.");
+        }
+        else
+        {
+            _logger.LogInformation("Thinking content found with length: {Length}", thinkingContent.Length);
+        }
+
+        _logger.LogInformation("Successfully received extended thinking response");
         return result;
+    }
+    catch (HttpRequestException ex)
+    {
+        _logger.LogError(ex, "HTTP error sending message with extended thinking: {Message}", ex.Message);
+        throw;
     }
     catch (Exception ex)
     {
-        _logger.LogError(ex, "Error sending message with extended thinking");
+        _logger.LogError(ex, "Error sending message with extended thinking: {Message}", ex.Message);
         throw;
     }
 }
 ```
 
-### 3. Update Claude Component
+### 4. Update the Claude.SendMessage.cs File
 
-#### Add properties to Claude.razor.cs
+Modify the `SendClick()` method to use the new request format:
 
 ```csharp
-// Add to the Claude class
-public string ThinkingContent { get; set; }
-public bool EnableExtendedThinking { get; set; } = false;
+// duetGPT/Components/Pages/Claude.SendMessage.cs
+if (EnableExtendedThinking && IsExtendedThinkingAvailable())
+{
+    _logger.LogInformation("Enabling extended thinking for this request");
 
+    try
+    {
+        // Convert standard parameters to extended request
+        var extendedRequest = new ExtendedMessageRequest
+        {
+            Model = modelChosen,
+            System = systemPrompt,
+            MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+            Temperature = 1.0m,
+            Thinking = new ThinkingParameters
+            {
+                BudgetTokens = 16000  // Allocate 16,000 tokens for thinking
+            }
+        };
+
+        // Convert messages to the format expected by the custom API
+        extendedRequest.Messages = chatMessages.Concat(new[] { message })
+            .Select(m => new MessageItem
+            {
+                Role = m.Role.ToString().ToLower(),
+                Content = m.Content is List<ContentBase> contentList
+                      ? string.Join("\n", contentList.OfType<TextContent>().Select(tc => tc.Text))
+                      : m.Content.ToString()
+            })
+            .ToList();
+
+        // Call the custom API
+        var extendedResponse = await _anthropicService.SendMessageWithExtendedThinkingAsync(extendedRequest);
+
+        // Extract the response
+        markdown = string.Join("\n", extendedResponse.Content.Select(c => c.Text));
+
+        // Extract thinking content using the helper method
+        var thinkingContent = extendedResponse.GetThinkingContent();
+        if (!string.IsNullOrEmpty(thinkingContent))
+        {
+            ThinkingContent = thinkingContent;
+            _logger.LogInformation("Received thinking content: {Length} characters", ThinkingContent.Length);
+        }
+        else
+        {
+            _logger.LogWarning("No thinking content was found in the response");
+            ThinkingContent = "Extended thinking was requested but not returned by the model. This may be due to API limitations or the specific query type.";
+        }
+
+        // Create a compatible response object for the rest of the code
+        res = new MessageResponse
+        {
+            Content = extendedResponse.Content.Select(c => new TextContent { Text = c.Text }).Cast<ContentBase>().ToList(),
+            Usage = new Usage { InputTokens = extendedResponse.Usage.InputTokens, OutputTokens = extendedResponse.Usage.OutputTokens }
+        };
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error using extended thinking feature. Falling back to standard API.");
+        // Fall back to standard API
+        useStandardApi = true;
+    }
+}
+```
+
+### 5. Update the IsExtendedThinkingAvailable Method
+
+Ensure the method correctly identifies models that support extended thinking:
+
+```csharp
+// duetGPT/Components/Pages/Claude.razor.cs
 private bool IsExtendedThinkingAvailable()
 {
-    // Only available for Claude 3.7 Sonnet
+    // Currently, only Claude 3.7 Sonnet supports extended thinking
     return ModelValue == Model.Sonnet37;
 }
 ```
 
-#### Update SendClick() method in Claude.SendMessage.cs
+## Testing Strategy
 
-Modify the SendClick() method to use the custom implementation when extended thinking is enabled:
+1. **Basic Functionality Test**:
+   - Send a simple message with extended thinking enabled
+   - Verify the request format in logs
+   - Confirm thinking content is received and displayed
 
-```csharp
-// Add this code block inside the SendClick() method, before the standard Anthropic API call
-if (EnableExtendedThinking && IsExtendedThinkingAvailable())
-{
-    _logger.LogInformation("Enabling extended thinking for this request");
-    
-    // Convert standard parameters to extended request
-    var extendedRequest = new ExtendedMessageRequest
-    {
-        Model = modelChosen,
-        System = systemPrompt,
-        MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
-        Temperature = 1.0m,
-        ExtendedThinking = true
-    };
-    
-    // Convert messages to the format expected by the custom API
-    extendedRequest.Messages = chatMessages.Concat(new[] { message })
-        .Select(m => new MessageItem 
-        { 
-            Role = m.Role.ToString().ToLower(), 
-            Content = m.Content is List<ContentBase> contentList 
-                ? string.Join("\n", contentList.OfType<TextContent>().Select(tc => tc.Text)) 
-                : m.Content.ToString() 
-        })
-        .ToList();
-    
-    // Call the custom API
-    var extendedResponse = await _anthropicService.SendMessageWithExtendedThinkingAsync(extendedRequest);
-    
-    // Extract the response
-    markdown = string.Join("\n", extendedResponse.Content.Select(c => c.Text));
-    
-    // Extract thinking content
-    ThinkingContent = extendedResponse.Thinking;
-    
-    // Create a compatible response object for the rest of the code
-    res = new MessageResponse
-    {
-        Content = extendedResponse.Content.Select(c => new TextContent { Text = c.Text }).Cast<ContentBase>().ToList(),
-        Usage = new Usage { InputTokens = extendedResponse.Usage.InputTokens, OutputTokens = extendedResponse.Usage.OutputTokens }
-    };
-}
-else
-{
-    // Existing code for standard API call
-    // ...
-}
-```
+2. **Error Handling Test**:
+   - Test with invalid parameters
+   - Verify fallback to standard API works correctly
 
-### 4. Update Claude.razor UI
+3. **Model Compatibility Test**:
+   - Test with Claude 3.7 Sonnet (should work)
+   - Test with other models (should fall back to standard API)
 
-Add a toggle for extended thinking in the sidebar:
+4. **Token Budget Test**:
+   - Test with different token budget values
+   - Monitor token usage and costs
 
-```html
-<!-- Add to the sidebar info-box in Claude.razor -->
-<div class="toggle-container">
-    <DxCheckBox @bind-Checked="@EnableExtendedThinking" />
-    <span>Enable Extended Thinking</span>
-    @if (EnableExtendedThinking && !IsExtendedThinkingAvailable())
-    {
-        <div class="warning-text">Only available with Claude 3.7 Sonnet</div>
-    }
-</div>
-```
+## Implementation Timeline
 
-Add a section to display the thinking content:
+1. **Day 1**: Update the request and response models
+2. **Day 2**: Modify the AnthropicService and Claude.SendMessage.cs
+3. **Day 3**: Testing and debugging
+4. **Day 4**: Documentation and final adjustments
 
-```html
-<!-- Add after the messages-container div in Claude.razor -->
-@if (!string.IsNullOrEmpty(ThinkingContent))
-{
-    <div class="thinking-content">
-        <h3>Claude's Thinking Process</h3>
-        <div class="thinking-box">
-            @((MarkupString)ThinkingContent)
-        </div>
-    </div>
-}
-```
+## Success Criteria
 
-### 5. Add CSS Styling
+1. Extended thinking feature works correctly with Claude 3.7 Sonnet
+2. No 400 Bad Request errors when using the feature
+3. Thinking content is properly displayed in the UI
+4. Fallback to standard API works when needed
 
-Add CSS styling for the new UI elements:
+## Risks and Mitigations
 
-```css
-/* Add to the style section in Claude.razor */
-.thinking-content {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-    width: 100%;
-}
+1. **API Changes**: Anthropic may update their API, requiring further adjustments
+   - Mitigation: Monitor Anthropic's API documentation for changes
 
-.thinking-box {
-    background-color: #ffffff;
-    padding: 15px;
-    border-radius: 5px;
-    border: 1px solid #dee2e6;
-    margin-top: 10px;
-    white-space: pre-wrap;
-    overflow-x: auto;
-}
+2. **Token Usage**: Extended thinking may significantly increase token usage and costs
+   - Mitigation: Implement configurable token budgets and usage warnings
 
-.warning-text {
-    color: #dc3545;
-    font-size: 0.8rem;
-    margin-top: 5px;
-}
-```
-
-## File Modifications Summary
-
-Here's a summary of all the files that need to be created or modified:
-
-### New Files
-1. `duetGPT/Data/ExtendedMessageRequest.cs` - Custom request model for extended thinking
-2. `duetGPT/Data/ExtendedMessageResponse.cs` - Custom response model for extended thinking
-
-### Modified Files
-1. `duetGPT/Services/AnthropicService.cs` - Add methods for custom HTTP client and extended thinking API call
-2. `duetGPT/Components/Pages/Claude.razor.cs` - Add properties for extended thinking
-3. `duetGPT/Components/Pages/Claude.SendMessage.cs` - Update SendClick method to use extended thinking
-4. `duetGPT/Components/Pages/Claude.razor` - Add UI elements for extended thinking toggle and display
-
-## Implementation Considerations
-
-1. **API Compatibility**: The extended_thinking parameter is only available with Claude 3.7 Sonnet, so we need to ensure it's only enabled when this model is selected.
-
-2. **Error Handling**: We need to handle errors gracefully if the extended thinking API call fails, falling back to the standard API call.
-
-3. **Performance**: Extended thinking may increase token usage and response times, so we should make this clear to users.
-
-4. **UI/UX**: The thinking content should be displayed in a way that's easy to read and understand, with proper formatting and styling.
-
-5. **Testing**: We need to thoroughly test the feature with various types of queries to ensure it works correctly and provides useful insights.
-
-## Testing Plan
-
-1. Verify that the extended thinking toggle only enables when Claude 3.7 Sonnet is selected
-2. Test sending a message with extended thinking enabled
-3. Verify that the thinking content is displayed correctly
-4. Test with various types of queries to ensure the thinking content is useful
-5. Verify that the feature can be toggled on and off without issues
+3. **Performance Impact**: Extended thinking may increase response times
+   - Mitigation: Add UI indicators for when extended thinking is in progress
 
 ## Future Improvements
 
 1. Add support for streaming responses with extended thinking
-2. Improve error handling for the custom API implementation
-3. Add UI controls to toggle the display of thinking content
-4. Consider contributing to the official Anthropic SDK to add native support for extended thinking
-
-## Next Steps
-
-To implement this plan, we need to switch to Code mode to create and modify the necessary files. The implementation should follow the steps outlined in this document, with careful attention to error handling and testing.
+2. Create a UI toggle for enabling/disabling extended thinking
+3. Add visualization tools for the thinking process
+4. Implement token budget configuration in the UI
