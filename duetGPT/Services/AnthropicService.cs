@@ -1,10 +1,8 @@
 ﻿using Anthropic.SDK;
+using Anthropic.SDK.Common;
+using Anthropic.SDK.Messaging;
 using duetGPT.Data;
 using Microsoft.Extensions.Logging;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text;
 
 namespace duetGPT.Services
 {
@@ -51,36 +49,7 @@ namespace duetGPT.Services
         }
 
         /// <summary>
-        /// Creates a custom HTTP client for direct API calls to Anthropic
-        /// </summary>
-        /// <returns>Configured HttpClient for Anthropic API</returns>
-        private HttpClient GetCustomHttpClient()
-        {
-            var apiKey = _configuration["Anthropic:ApiKey"];
-            if (string.IsNullOrEmpty(apiKey))
-            {
-                _logger.LogError("Anthropic API key is not configured");
-                throw new ArgumentException("Anthropic API key is not configured.");
-            }
-
-            var client = new HttpClient();
-            client.BaseAddress = new Uri("https://api.anthropic.com");
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("x-api-key", apiKey);
-
-            // Use the latest API version
-            client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-            // Add the beta header for extended thinking
-            // This is the key change - we're using the beta feature through headers
-            client.DefaultRequestHeaders.Add("anthropic-beta", "thinking-2024-03-01");
-
-            return client;
-        }
-
-        /// <summary>
-        /// Sends a message to Claude with extended thinking enabled
+        /// Sends a message to Claude with extended thinking enabled using the AnthropicClient
         /// </summary>
         /// <param name="request">The extended message request</param>
         /// <returns>Response with thinking content</returns>
@@ -88,73 +57,101 @@ namespace duetGPT.Services
         {
             try
             {
-                _logger.LogInformation("Sending message with extended thinking enabled");
-                var client = GetCustomHttpClient();
+                _logger.LogInformation("Sending message with extended thinking enabled using AnthropicClient");
 
-                // Create a modified request object that includes the thinking parameter
-                var requestJson = new
+                // Convert custom request to SDK MessageParameters
+                var messages = new List<Message>();
+                foreach (var msg in request.Messages)
                 {
-                    model = request.Model,
-                    messages = request.Messages,
-                    system = request.System,
-                    max_tokens = request.MaxTokens,
-                    temperature = request.Temperature,
-                    thinking = request.Thinking  // Use the structured thinking parameter
+                    messages.Add(new Message(
+                        msg.Role == "user" ? RoleType.User : RoleType.Assistant,
+                        msg.Content
+                    ));
+                }
+
+                var parameters = new MessageParameters()
+                {
+                    Model = request.Model,
+                    Messages = messages,
+                    System = !string.IsNullOrEmpty(request.System) ? new List<SystemMessage> { new SystemMessage(request.System) } : null,
+                    MaxTokens = request.MaxTokens,
+                    Temperature = request.Temperature,
+                    Stream = false,
+                    Thinking = request.Thinking != null ? new Anthropic.SDK.Messaging.ThinkingParameters()
+                    {
+                        BudgetTokens = request.Thinking.BudgetTokens
+                    } : null
                 };
 
-                // Serialize the request manually
-                var jsonContent = JsonSerializer.Serialize(requestJson);
-                _logger.LogDebug("Request JSON: {Json}", jsonContent);
+                _logger.LogDebug("Calling AnthropicClient with parameters: Model={Model}, MaxTokens={MaxTokens}, Temperature={Temperature}, ThinkingBudget={ThinkingBudget}",
+                    parameters.Model, parameters.MaxTokens, parameters.Temperature, parameters.Thinking?.BudgetTokens);
 
-                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                // Use the AnthropicClient to send the message
+                var response = await _anthropicClient.Messages.GetClaudeMessageAsync(parameters);
 
-                // Log the request headers for debugging
-                foreach (var header in client.DefaultRequestHeaders)
+                if (response == null)
                 {
-                    _logger.LogDebug("Request header: {Key} = {Value}", header.Key, string.Join(", ", header.Value));
+                    throw new InvalidOperationException("Failed to get response from Anthropic API");
                 }
 
-                var response = await client.PostAsync("/v1/messages", content);
-
-                // Log the response status code
-                _logger.LogDebug("Response status code: {StatusCode}", response.StatusCode);
-
-                // Read the response content even if it's an error
-                var responseContent = await response.Content.ReadAsStringAsync();
-                _logger.LogDebug("Response content: {Content}", responseContent);
-
-                // Now check if the response was successful
-                response.EnsureSuccessStatusCode();
-
-                var result = JsonSerializer.Deserialize<ExtendedMessageResponse>(responseContent);
-
-                if (result == null)
+                // Convert SDK response to custom ExtendedMessageResponse
+                var result = new ExtendedMessageResponse
                 {
-                    throw new InvalidOperationException("Failed to deserialize response from Anthropic API");
+                    Id = response.Id,
+                    Type = response.Type,
+                    Role = response.Role.ToString().ToLower(),
+                    Model = response.Model,
+                    StopReason = response.StopReason,
+                    StopSequence = response.StopSequence?.ToString(),
+                    Content = new List<ContentItem>(),
+                    Usage = new UsageInfo
+                    {
+                        InputTokens = response.Usage.InputTokens,
+                        OutputTokens = response.Usage.OutputTokens
+                    }
+                };
+
+                // Convert content items
+                if (response.Content != null)
+                {
+                    foreach (var content in response.Content)
+                    {
+                        if (content is TextContent textContent)
+                        {
+                            result.Content.Add(new ContentItem
+                            {
+                                Type = "text",
+                                Text = textContent.Text
+                            });
+                        }
+                        else if (content is ThinkingContent thinking)
+                        {
+                            result.Content.Add(new ContentItem
+                            {
+                                Type = "thinking",
+                                Text = thinking.ToString()
+                            });
+                        }
+                    }
                 }
 
-                // Log whether thinking content was found
-                var thinkingContent = result.GetThinkingContent();
-                if (string.IsNullOrEmpty(thinkingContent))
+                // Extract thinking content for logging
+                var extractedThinkingContent = result.GetThinkingContent();
+                if (string.IsNullOrEmpty(extractedThinkingContent))
                 {
                     _logger.LogWarning("No thinking content found in the response.");
                 }
                 else
                 {
-                    _logger.LogInformation("Thinking content found with length: {Length}", thinkingContent.Length);
+                    _logger.LogInformation("Thinking content found with length: {Length}", extractedThinkingContent.Length);
                 }
 
-                _logger.LogInformation("Successfully received extended thinking response");
+                _logger.LogInformation("Successfully received extended thinking response using AnthropicClient");
                 return result;
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "HTTP error sending message with extended thinking: {Message}", ex.Message);
-                throw;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending message with extended thinking: {Message}", ex.Message);
+                _logger.LogError(ex, "Error sending message with extended thinking using AnthropicClient: {Message}", ex.Message);
                 throw;
             }
         }

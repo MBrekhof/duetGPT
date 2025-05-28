@@ -304,7 +304,7 @@ Use the following guidelines:
             {
               Messages = chatMessages.Concat(new[] { message }).ToList(),
               Model = modelChosen,
-              MaxTokens = ModelValue == Model.Sonnet35 ? 8192 : 4096,
+              MaxTokens = ModelValue == Model.Sonnet37 ? 8192 : 16384,
               Stream = !hasImage, // Don't stream if we have an image
               Temperature = 1.0m,
               System = systemMessages
@@ -500,12 +500,10 @@ Use the following guidelines:
       {
         return modelValue switch
         {
+          Model.Sonnet4 => AnthropicModels.Claude4Sonnet,
+          Model.Opus4 => AnthropicModels.Claude4Opus,
           Model.Haiku35 => AnthropicModels.Claude35Haiku,
-          Model.Sonnet => AnthropicModels.Claude3Sonnet,
-          Model.Sonnet35 => AnthropicModels.Claude35Sonnet,
           Model.Sonnet37 => AnthropicModels.Claude37Sonnet,
-          Model.Opus => AnthropicModels.Claude3Opus,
-
           _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
               $"Not expected model value: {modelValue}")
         };

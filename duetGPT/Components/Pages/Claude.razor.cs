@@ -159,11 +159,10 @@ namespace duetGPT.Components.Pages
 
         public enum Model
         {
+            Sonnet4,
             Sonnet37,
-            Sonnet35,
             Haiku35,
-            Sonnet,
-            Opus
+            Opus4
         }
 
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();
