@@ -5,7 +5,7 @@ using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Tavily;
+
 
 namespace duetGPT.Components.Pages
 {

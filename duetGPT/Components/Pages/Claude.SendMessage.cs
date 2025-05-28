@@ -1,6 +1,7 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
+using Anthropic.SDK.Common;
 using DevExpress.Blazor;
 using duetGPT.Data;
 using duetGPT.Services;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Tavily;
+
 
 namespace duetGPT.Components.Pages
 {
@@ -47,6 +48,9 @@ namespace duetGPT.Components.Pages
             { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) }
         };
 
+    /// <summary>
+    /// Handles the send message click event and processes the user's message through the AI service
+    /// </summary>
     async Task SendClick()
     {
       if (string.IsNullOrWhiteSpace(textInput))
@@ -113,39 +117,8 @@ namespace duetGPT.Components.Pages
           }
         }
 
-        // Perform web search if enabled
-        if (EnableWebSearch)
-        {
-          try
-          {
-            var tavilyApiKey = _configuration["Tavily:ApiKey"];
-            if (!string.IsNullOrEmpty(tavilyApiKey))
-            {
-              using var tavilyClient = new TavilyClient();
-              var searchResponse = await tavilyClient.SearchAsync(
-                  apiKey: tavilyApiKey,
-                  query: textInput);
-
-              if (searchResponse?.Results != null)
-              {
-                var webResults = searchResponse.Results
-                    .OrderByDescending(r => r.Score)
-                    .Take(3) // Limit to top 3 most relevant results
-                    .Select(r => $"Source: {r.Url}\nTitle: {r.Title}\nContent: {r.Content}");
-
-                knowledgeContent.Add("\nWeb Search Results:\n" + string.Join("\n---\n", webResults));
-              }
-            }
-            else
-            {
-              _logger.LogWarning("Tavily API key not found in configuration");
-            }
-          }
-          catch (Exception ex)
-          {
-            _logger.LogError(ex, "Error performing web search");
-          }
-        }
+        // Web search will be handled by Anthropic's native web search tool when enabled
+        // The search results will be automatically included in the AI response
 
         string systemPrompt = @"You are an expert at analyzing user questions and providing accurate, relevant answers.
 Use the following guidelines:
@@ -172,6 +145,12 @@ Use the following guidelines:
         if (knowledgeContent.Any())
         {
           systemPrompt += "\n\nRelevant knowledge base content:\n" + string.Join("\n---\n", knowledgeContent);
+        }
+
+        // Add web search instruction if enabled
+        if (EnableWebSearch)
+        {
+          systemPrompt += "\n\nYou have access to web search capabilities. Use them when you need current information or when the provided knowledge base doesn't contain sufficient information to answer the user's question.";
         }
 
         MessageResponse res = null;
@@ -251,6 +230,15 @@ Use the following guidelines:
                 }
               };
 
+              // Add web search tool if enabled
+              if (EnableWebSearch)
+              {
+                extendedRequest.Tools = new List<Anthropic.SDK.Common.Tool>
+                {
+                    ServerTools.GetWebSearchTool(5, null, new List<string>())
+                };
+                extendedRequest.ToolChoice = new ToolChoice() { Type = ToolChoiceType.Auto };
+              }
 
               // Call the custom API
               var extendedResponse = await client.Messages.GetClaudeMessageAsync(extendedRequest);
@@ -309,6 +297,17 @@ Use the following guidelines:
               Temperature = 1.0m,
               System = systemMessages
             };
+
+            // Add web search tool if enabled
+            if (EnableWebSearch)
+            {
+              parameters.Tools = new List<Anthropic.SDK.Common.Tool>
+              {
+                  ServerTools.GetWebSearchTool(5, null, new List<string>())
+              };
+              parameters.ToolChoice = new ToolChoice() { Type = ToolChoiceType.Auto };
+              _logger.LogInformation("Web search tool enabled for this request");
+            }
 
             // Add user message to chat history
             chatMessages.Add(message);
@@ -437,6 +436,13 @@ Use the following guidelines:
       }
     }
 
+    /// <summary>
+    /// Generates a descriptive title for the thread based on the conversation content
+    /// </summary>
+    /// <param name="client">The Anthropic client instance</param>
+    /// <param name="modelChosen">The model to use for title generation</param>
+    /// <param name="userMessage">The user's message</param>
+    /// <param name="assistantResponse">The assistant's response</param>
     private async Task GenerateThreadTitle(AnthropicClient client, string modelChosen, string userMessage, string assistantResponse)
     {
       await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
@@ -494,53 +500,56 @@ Use the following guidelines:
       }
     }
 
+    /// <summary>
+    /// Gets the model string based on the selected model enum value
+    /// </summary>
+    /// <param name="modelValue">The model enum value</param>
+    /// <returns>The corresponding model string</returns>
     private string GetModelChosen(Model modelValue)
     {
       try
       {
         return modelValue switch
         {
-          Model.Sonnet4 => AnthropicModels.Claude4Sonnet,
-          Model.Opus4 => AnthropicModels.Claude4Opus,
           Model.Haiku35 => AnthropicModels.Claude35Haiku,
+          Model.Sonnet4 => AnthropicModels.Claude4Sonnet,
           Model.Sonnet37 => AnthropicModels.Claude37Sonnet,
-          _ => throw new ArgumentOutOfRangeException(nameof(modelValue),
-              $"Not expected model value: {modelValue}")
+          Model.Opus4 => AnthropicModels.Claude4Opus,
+          _ => AnthropicModels.Claude35Sonnet
         };
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Error getting model choice for value: {ModelValue}", modelValue);
-        throw;
+        _logger.LogError(ex, "Error getting model chosen");
+        return AnthropicModels.Claude35Sonnet; // Default fallback
       }
     }
 
+    /// <summary>
+    /// Gets the cost structure for a specific model
+    /// </summary>
+    /// <param name="model">The model string</param>
+    /// <returns>The cost structure for the model</returns>
     private ModelCosts GetModelCosts(string model)
     {
-      if (MODEL_COSTS.TryGetValue(model, out var costs))
-      {
-        return costs;
-      }
-
-      // Log warning for unrecognized model and use default rates
-      _logger.LogWarning("Unrecognized model: {Model}. Using default rates.", model);
-      return new ModelCosts(0.0003m, 0.0003m);
+      return MODEL_COSTS.TryGetValue(model, out var costs) ? costs : MODEL_COSTS[AnthropicModels.Claude35Sonnet];
     }
 
+    /// <summary>
+    /// Calculates the cost based on token count and rate per token
+    /// </summary>
+    /// <param name="tokens">Number of tokens</param>
+    /// <param name="ratePerToken">Rate per token</param>
+    /// <returns>The calculated cost</returns>
     private static decimal CalculateCost(int tokens, decimal ratePerToken)
     {
-      if (tokens < 0)
-      {
-        throw new ArgumentException("Token count cannot be negative", nameof(tokens));
-      }
-
       try
       {
-        return tokens * ratePerToken / 1000m; // Cost per 1000 tokens
+        return tokens * ratePerToken;
       }
-      catch (OverflowException ex)
+      catch (Exception)
       {
-        throw new OverflowException("Cost calculation resulted in overflow. Please check token count and rates.", ex);
+        return 0; // Return 0 if calculation fails
       }
     }
   }
