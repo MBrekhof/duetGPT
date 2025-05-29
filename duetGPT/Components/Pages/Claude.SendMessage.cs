@@ -1,17 +1,12 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
-using Anthropic.SDK.Common;
 using DevExpress.Blazor;
 using duetGPT.Data;
 using duetGPT.Services;
 using Markdig;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using OpenAI;
-using duetGPT.Migrations;
 
 
 namespace duetGPT.Components.Pages
@@ -78,6 +73,11 @@ namespace duetGPT.Components.Pages
                 else if (string.IsNullOrEmpty(currentThread.Title) || currentThread.Title == "Not yet created")
                 {
                     newThread = true; // Ensure title gets generated after this message exchange
+                }
+                // Load existing messages from database if we have a thread and chatMessages is empty
+                if (currentThread != null && !chatMessages.Any())
+                {
+                    await LoadMessagesFromDb();
                 }
                 string modelChosen = GetModelChosen(ModelValue);
                 _logger.LogInformation("Sending message using model: {Model}", modelChosen);
@@ -253,15 +253,15 @@ Use the following guidelines:
                             // Extract the response
                             markdown = string.Join("\n", extendedResponse.Message.ToString());
 
-                            foreach (var toolCall in res.ToolCalls)
-                            {
-                                var response = await toolCall.InvokeAsync<string>();
+                            //foreach (var toolCall in res.ToolCalls)
+                            //{
+                            //    var response = await toolCall.InvokeAsync<string>();
 
-                                chatMessages.Add(new Message(toolCall, response));
-                            }
+                            //    chatMessages.Add(new Message(toolCall, response));
+                            //}
 
-                            var finalResult = await client.Messages.GetClaudeMessageAsync(extendedRequest);
-                            markdown = string.Join("\n", finalResult.Message.ToString());
+                            //var finalResult = await client.Messages.GetClaudeMessageAsync(extendedRequest);
+                            //markdown = string.Join("\n", finalResult.Message.ToString());
 
                             // Extract thinking content using the helper method
                             var thinkingContent = extendedResponse.Message.ThinkingContent;
@@ -307,6 +307,8 @@ Use the following guidelines:
                         var tools = Anthropic.SDK.Common.Tool.GetAllAvailableTools(includeDefaults: false,
                                             forceUpdate: true, clearCache: true);
 
+                        // Add user message to chat history before API call
+                        chatMessages.Add(message);
                         // Include full chat history in API call
                         var parameters = new MessageParameters
                         {
@@ -357,12 +359,13 @@ Use the following guidelines:
                         {
                             res = await client.Messages.GetClaudeMessageAsync(parameters);
                             chatMessages.Add(res.Message);
-
+                            
                             foreach (var toolCall in res.ToolCalls)
                             {
-                                var response = toolCall.Invoke<string>();
+                                var response = await toolCall.InvokeAsync<string>();
+                                var answer = new Message(toolCall, response);
 
-                                chatMessages.Add(new Message(toolCall, response));
+                                chatMessages.Add(answer);
                             }
 
                             var finalResult = await client.Messages.GetClaudeMessageAsync(parameters);
@@ -414,7 +417,7 @@ Use the following guidelines:
 
                 // Add assistant response to chat history
                 var assistantMessage = new Message(RoleType.Assistant, markdown, null);
-                chatMessages.Add(assistantMessage);
+                // Assistant response already added to chat history in the API call section
 
                 // Generate thread title if this is a new thread or needs a title update
                 if (newThread)

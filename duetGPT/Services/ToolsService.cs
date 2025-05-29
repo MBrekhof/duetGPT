@@ -2,13 +2,13 @@
 
 namespace duetGPT.Services
 {
-    public static class ToolsService
+    public class  ToolsService
     {
 
         [Function("This function returns current date and time")]
-        public static string GetCurrentDateTime()
+        public static async Task<string> GetCurrentDateTime()
         {
-            //await Task.Yield(); // Simulate async operation if needed
+            await Task.Yield(); // Simulate async operation if needed
             return DateTime.UtcNow.ToString("o"); // ISO 8601 format
         }
     }
