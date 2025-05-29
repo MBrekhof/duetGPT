@@ -65,6 +65,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddSingleton<AnthropicService>();
 // Add OpenAIService
 builder.Services.AddSingleton<OpenAIService>();
+// Add ToolsService
+//builder.Services.AddSingleton<ToolsService>();
 
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
