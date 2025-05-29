@@ -1,6 +1,7 @@
 using Anthropic.SDK;
 using Anthropic.SDK.Constants;
 using Anthropic.SDK.Messaging;
+using Anthropic.SDK.Common; // Added for ServerTools
 using DevExpress.Blazor;
 using duetGPT.Data;
 using duetGPT.Services;
@@ -41,11 +42,10 @@ namespace duetGPT.Components.Pages
 
         private static readonly Dictionary<string, ModelCosts> MODEL_COSTS = new()
         {
-            { AnthropicModels.Claude3Haiku, new ModelCosts(0.00025m, 0.00025m) },
-            { AnthropicModels.Claude3Sonnet, new ModelCosts(0.0003m, 0.0003m) },
-            { AnthropicModels.Claude35Sonnet, new ModelCosts(0.00035m, 0.00035m) },
+            { AnthropicModels.Claude35Haiku, new ModelCosts(0.00025m, 0.00025m) },
+            { AnthropicModels.Claude4Sonnet, new ModelCosts(0.0003m, 0.0003m) },
             { AnthropicModels.Claude37Sonnet, new ModelCosts(0.00035m, 0.00035m) },
-            { AnthropicModels.Claude3Opus, new ModelCosts(0.0004m, 0.0004m) }
+            { AnthropicModels.Claude4Opus, new ModelCosts(0.0004m, 0.0004m) }
         };
 
         /// <summary>
@@ -57,6 +57,13 @@ namespace duetGPT.Components.Pages
             {
                 return;
             }
+
+            // Variables declared outside try for finally block access
+            MessageResponse res = null;
+            string markdown = string.Empty;
+            string modelChosen = string.Empty;
+            DuetMessage duetUserMessage = null;
+
             try
             {
                 running = true;
@@ -79,13 +86,13 @@ namespace duetGPT.Components.Pages
                 {
                     await LoadMessagesFromDb();
                 }
-                string modelChosen = GetModelChosen(ModelValue);
+                modelChosen = GetModelChosen(ModelValue); // Initialize here
                 _logger.LogInformation("Sending message using model: {Model}", modelChosen);
 
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
                 // Create and save DuetMessage for user input
-                var duetUserMessage = new DuetMessage
+                duetUserMessage = new DuetMessage // Initialize here
                 {
                     ThreadId = currentThread.Id,
                     Role = "user",
@@ -122,9 +129,6 @@ namespace duetGPT.Components.Pages
                     }
                 }
 
-                // Web search will be handled by Anthropic's native web search tool when enabled
-                // The search results will be automatically included in the AI response
-
                 string systemPrompt = @"You are an expert at analyzing user questions and providing accurate, relevant answers.
 Use the following guidelines:
 1. Prioritize information from the provided knowledge base when available
@@ -158,8 +162,7 @@ Use the following guidelines:
                     systemPrompt += "\n\nYou have access to web search capabilities. Use them when you need current information or when the provided knowledge base doesn't contain sufficient information to answer the user's question.";
                 }
 
-                MessageResponse res = null;
-                string markdown = string.Empty;
+                List<SystemMessage> systemMessages;
 
                 try
                 {
@@ -168,7 +171,7 @@ Use the following guidelines:
 
                     // Create message with image if available
                     var imageBytes = await GetCurrentImageBytes();
-                    Message message;
+                    Message message; // This is the current user's input message
                     if (imageBytes != null && CurrentImageType != null)
                     {
                         string base64Data = Convert.ToBase64String(imageBytes);
@@ -214,14 +217,12 @@ Use the following guidelines:
 
                         try
                         {
-                            // Create system messages for extended thinking
-                            var systemMessages = new List<SystemMessage>()
-              {
-                  new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
-              };
+                            systemMessages = new List<SystemMessage>()
+                            {
+                                new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
+                            };
                             var tools = Anthropic.SDK.Common.Tool.GetAllAvailableTools(includeDefaults: false,
                                               forceUpdate: true, clearCache: true);
-                            // Convert standard parameters to extended request
                             var extendedRequest = new MessageParameters()
                             {
                                 Messages = chatMessages.Concat(new[] { message }).ToList(),
@@ -229,42 +230,31 @@ Use the following guidelines:
                                 Stream = false,
                                 MaxTokens = 20000,
                                 Temperature = 1.0m,
-                                System = systemMessages,  // Include system messages with knowledge content
+                                System = systemMessages,
                                 Thinking = new Anthropic.SDK.Messaging.ThinkingParameters()
                                 {
-                                    BudgetTokens = 16000  // Allocate 16,000 tokens for thinking
+                                    BudgetTokens = 16000
                                 },
                                 Tools = tools.ToList(),
                             };
 
-                            // Add web search tool if enabled
                             if (EnableWebSearch)
                             {
-                                extendedRequest.Tools = new List<Anthropic.SDK.Common.Tool>
-                {
-                    ServerTools.GetWebSearchTool(5, null, new List<string>())
-                };
+                                if (extendedRequest.Tools == null) extendedRequest.Tools = new List<Anthropic.SDK.Common.Tool>();
+                                var webSearchTool = ServerTools.GetWebSearchTool(5, null, new List<string>());
+                                if (!extendedRequest.Tools.Any(t => t.GetType() == webSearchTool.GetType()))
+                                {
+                                    extendedRequest.Tools.Add(webSearchTool);
+                                }
                                 extendedRequest.ToolChoice = new ToolChoice() { Type = ToolChoiceType.Auto };
                             }
 
-                            // Call the custom API
                             var extendedResponse = await client.Messages.GetClaudeMessageAsync(extendedRequest);
+                            res = extendedResponse; // Assign directly
 
-                            // Extract the response
-                            markdown = string.Join("\n", extendedResponse.Message.ToString());
+                            markdown = res.Message?.ToString() ?? "No message content in extended response.";
 
-                            //foreach (var toolCall in res.ToolCalls)
-                            //{
-                            //    var response = await toolCall.InvokeAsync<string>();
-
-                            //    chatMessages.Add(new Message(toolCall, response));
-                            //}
-
-                            //var finalResult = await client.Messages.GetClaudeMessageAsync(extendedRequest);
-                            //markdown = string.Join("\n", finalResult.Message.ToString());
-
-                            // Extract thinking content using the helper method
-                            var thinkingContent = extendedResponse.Message.ThinkingContent;
+                            var thinkingContent = res.Message.ThinkingContent;
                             if (!string.IsNullOrEmpty(thinkingContent))
                             {
                                 ThinkingContent = thinkingContent;
@@ -276,17 +266,12 @@ Use the following guidelines:
                                 ThinkingContent = "Extended thinking was requested but not returned by the model. This may be due to API limitations or the specific query type.";
                             }
 
-                            // Create a compatible response object for the rest of the code
-                            res = new MessageResponse
-                            {
-                                Content = extendedResponse.Content,
-                                Usage = new Anthropic.SDK.Messaging.Usage { InputTokens = extendedResponse.Usage.InputTokens, OutputTokens = extendedResponse.Usage.OutputTokens }
-                            };
+                            chatMessages.Add(message);
+                            if (res.Message != null) chatMessages.Add(res.Message);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Error using extended thinking feature. Falling back to standard API.");
-                            // Fall back to standard API
                             useStandardApi = true;
                         }
                     }
@@ -297,8 +282,7 @@ Use the following guidelines:
 
                     if (useStandardApi)
                     {
-                        // Handle Anthropic models with standard API
-
+                        _logger.LogInformation("Using standard API path.");
                         systemMessages = new List<SystemMessage>()
                             {
                                 new SystemMessage(systemPrompt, new CacheControl() { Type = CacheControlType.ephemeral })
@@ -307,26 +291,24 @@ Use the following guidelines:
                         var tools = Anthropic.SDK.Common.Tool.GetAllAvailableTools(includeDefaults: false,
                                             forceUpdate: true, clearCache: true);
 
-                        // Add user message to chat history before API call
-                        chatMessages.Add(message);
-                        // Include full chat history in API call
+                        var apiCallMessages = new List<Message>(chatMessages);
+                        apiCallMessages.Add(message);
+
                         var parameters = new MessageParameters
                         {
-                            Messages = chatMessages.Concat(new[] { message }).ToList(),
+                            Messages = apiCallMessages,
                             Model = modelChosen,
                             MaxTokens = ModelValue == Model.Sonnet37 ? 8192 : 16384,
-                            Stream = false,// !hasImage, // Don't stream if we have an image
+                            Stream = false,
                             Temperature = 1.0m,
                             System = systemMessages,
                             Tools = tools.ToList(),
                             ToolChoice = new ToolChoice { Type = ToolChoiceType.Auto },
                         };
 
-                        // Add web search tool if enabled and not already present
                         if (EnableWebSearch)
                         {
                             var webSearchTool = ServerTools.GetWebSearchTool(5, null, new List<string>());
-                            // Only add if not already present (by type or unique property)
                             if (!parameters.Tools.Any(t => t.GetType() == webSearchTool.GetType()))
                             {
                                 parameters.Tools.Add(webSearchTool);
@@ -336,14 +318,12 @@ Use the following guidelines:
                             {
                                 _logger.LogInformation("Web search tool already present in tools list, not adding again");
                             }
-                            //parameters.ToolChoice = new ToolChoice() { Type = ToolChoiceType.Auto };
                         }
-
-                        // Add user message to chat history
 
                         if ((bool)parameters.Stream)
                         {
-                            markdown = string.Empty;
+                            _logger.LogInformation("Using streaming API call.");
+                            markdown = string.Empty; // Initialize markdown for streaming
                             var outputs = new List<MessageResponse>();
                             await foreach (var streamRes in client.Messages.StreamClaudeMessageAsync(parameters))
                             {
@@ -353,29 +333,77 @@ Use the following guidelines:
                                 }
                                 outputs.Add(streamRes);
                             }
-                            res = outputs.Last();
+                            res = outputs.LastOrDefault();
+                            chatMessages.Add(message);
+                            if (res?.Message != null) chatMessages.Add(res.Message);
                         }
                         else
                         {
+                            _logger.LogInformation("Using non-streaming API call. Initial messages count: {Count}", parameters.Messages.Count);
                             res = await client.Messages.GetClaudeMessageAsync(parameters);
-                            chatMessages.Add(res.Message);
-                            
-                            foreach (var toolCall in res.ToolCalls)
-                            {
-                                var response = await toolCall.InvokeAsync<string>();
-                                var answer = new Message(toolCall, response);
+                            _logger.LogInformation("First API call completed. Stop Reason: {StopReason}", res.StopReason);
 
-                                chatMessages.Add(answer);
+                            chatMessages.Add(message);
+                            if (res.Message != null)
+                            {
+                                chatMessages.Add(res.Message);
+                            }
+                            else
+                            {
+                                _logger.LogWarning("First API response message was null.");
                             }
 
-                            var finalResult = await client.Messages.GetClaudeMessageAsync(parameters);
-                            markdown = finalResult.Content[0].ToString() ?? "No answer";
+                            if (res.ToolCalls != null && res.ToolCalls.Any())
+                            {
+                                _logger.LogInformation("Tool calls received: {Count}", res.ToolCalls.Count);
+                                foreach (var toolCall in res.ToolCalls)
+                                {
+                                    _logger.LogInformation("Invoking tool: {ToolName}, ID: {ToolId}", toolCall.Name, toolCall.Id);
+                                    var toolResponseContent = await toolCall.InvokeAsync<string>();
+                                    var toolMessage = new Message(toolCall, toolResponseContent);
+                                    chatMessages.Add(toolMessage);
+                                    _logger.LogInformation("Tool {ToolName} (ID: {ToolId}) invoked, response length: {Length}", toolCall.Name, toolCall.Id, toolResponseContent?.Length ?? 0);
+                                }
+
+                                var finalApiCallMessages = new List<Message>(chatMessages);
+
+                                var finalParameters = new MessageParameters
+                                {
+                                    Messages = finalApiCallMessages,
+                                    Model = parameters.Model,
+                                    MaxTokens = parameters.MaxTokens,
+                                    Stream = false,
+                                    Temperature = parameters.Temperature,
+                                    System = parameters.System,
+                                    Tools = parameters.Tools,
+                                    ToolChoice = parameters.ToolChoice
+                                };
+
+                                _logger.LogInformation("Making second API call with {Count} messages after tool results.", finalApiCallMessages.Count);
+                                var finalResult = await client.Messages.GetClaudeMessageAsync(finalParameters);
+                                _logger.LogInformation("Second API call completed. Stop Reason: {StopReason}", finalResult.StopReason);
+
+                                markdown = finalResult.Message?.ToString() ?? "No message content in final response after tool use.";
+
+                                if (finalResult.Message != null)
+                                {
+                                    chatMessages.Add(finalResult.Message);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Final API response message was null after tool use.");
+                                }
+                                res = finalResult;
+                            }
+                            else
+                            {
+                                _logger.LogInformation("No tool calls in the first response.");
+                                markdown = res.Message?.ToString() ?? "No message content in response.";
+                            }
                         }
                     }
 
-
-
-                    _logger.LogInformation("Successfully received response from AI service");
+                    _logger.LogInformation("Successfully received response from AI service. Markdown preview: {MarkdownPreview}", markdown?.Substring(0, Math.Min(markdown.Length, 100)));
                 }
                 catch (Exception ex)
                 {
@@ -391,45 +419,39 @@ Use the following guidelines:
                     throw;
                 }
 
-                Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
-
-                // Calculate costs using separate rates for input and output tokens
-                var costs = GetModelCosts(modelChosen);
-                decimal inputCost = CalculateCost(res.Usage.InputTokens, costs.InputRate);
-                decimal outputCost = CalculateCost(res.Usage.OutputTokens, costs.OutputRate);
-
-                // Update user message with token count and cost
-                duetUserMessage.TokenCount = res.Usage.InputTokens;
-                duetUserMessage.MessageCost = inputCost;
-                await dbContext.SaveChangesAsync();
-
-                // Create and save assistant message
-                var duetAssistantMessage = new DuetMessage
+                if (res == null || res.Usage == null)
                 {
-                    ThreadId = currentThread.Id,
-                    Role = "assistant",
-                    Content = markdown,
-                    TokenCount = res.Usage.OutputTokens,
-                    MessageCost = outputCost
-                };
-                dbContext.Add(duetAssistantMessage);
-                await dbContext.SaveChangesAsync();
-
-                // Add assistant response to chat history
-                var assistantMessage = new Message(RoleType.Assistant, markdown, null);
-                // Assistant response already added to chat history in the API call section
-
-                // Generate thread title if this is a new thread or needs a title update
-                if (newThread)
-                {
-                    var client = _anthropicService.GetAnthropicClient();
-                    await GenerateThreadTitle(client, modelChosen, textInput, markdown);
-                    newThread = false; // Reset the flag after generating the title
+                    _logger.LogError("API response or usage information is null. Cannot calculate tokens or cost accurately.");
+                    Tokens = 0;
                 }
+                else
+                {
+                    Tokens = res.Usage.InputTokens + res.Usage.OutputTokens;
+                    var costs = GetModelCosts(modelChosen);
+                    decimal inputCost = CalculateCost(res.Usage.InputTokens, costs.InputRate);
+                    decimal outputCost = CalculateCost(res.Usage.OutputTokens, costs.OutputRate);
 
-                // Update Tokens and Cost
-                UpdateTokensAsync(Tokens);
-                UpdateCostAsync(Cost + inputCost + outputCost);
+                    if (duetUserMessage != null) // Ensure duetUserMessage is not null
+                    {
+                        duetUserMessage.TokenCount = res.Usage.InputTokens;
+                        duetUserMessage.MessageCost = inputCost;
+                        await dbContext.SaveChangesAsync();
+                    }
+
+                    var duetAssistantMessage = new DuetMessage
+                    {
+                        ThreadId = currentThread.Id,
+                        Role = "assistant",
+                        Content = markdown,
+                        TokenCount = res.Usage.OutputTokens,
+                        MessageCost = outputCost
+                    };
+                    dbContext.Add(duetAssistantMessage);
+                    await dbContext.SaveChangesAsync();
+
+                    UpdateTokensAsync(Tokens);
+                    UpdateCostAsync(Cost + inputCost + outputCost);
+                }
 
                 var pipeline = new MarkdownPipelineBuilder().UseAdvancedExtensions().Build();
                 if (textInput != null)
@@ -444,7 +466,7 @@ Use the following guidelines:
                     formattedMessages.Add(Markdown.ToHtml("Sorry, no response..", pipeline));
                 }
 
-                textInput = ""; // clear input
+                textInput = "";
                 _logger.LogInformation("Message sent and processed successfully");
             }
             catch (HttpRequestException ex)
@@ -461,18 +483,32 @@ Use the following guidelines:
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing message");
-                _toastService.ShowToast(new ToastOptions()
+                if (ex.Message.Contains("Failed to get response from AI service"))
                 {
-                    ProviderName = "ClaudePage",
-                    ThemeMode = ToastThemeMode.Dark,
-                    RenderStyle = ToastRenderStyle.Danger,
-                    Title = "Processing Error",
-                    Text = "An error occurred while processing your message. Please try again."
-                });
+                    // Already handled
+                }
+                else
+                {
+                    _logger.LogError(ex, "Error processing message in SendClick");
+                    _toastService.ShowToast(new ToastOptions()
+                    {
+                        ProviderName = "ClaudePage",
+                        ThemeMode = ToastThemeMode.Dark,
+                        RenderStyle = ToastRenderStyle.Danger,
+                        Title = "Processing Error",
+                        Text = "An error occurred while processing your message. Please try again."
+                    });
+                }
             }
             finally
             {
+                if (newThread && res != null && !string.IsNullOrEmpty(markdown) && currentThread != null && duetUserMessage != null && !string.IsNullOrEmpty(modelChosen))
+                {
+                    var client = _anthropicService.GetAnthropicClient();
+                    await GenerateThreadTitle(client, modelChosen, duetUserMessage.Content, markdown);
+                    newThread = false;
+                }
+
                 running = false;
                 StateHasChanged();
             }
@@ -495,8 +531,6 @@ Use the following guidelines:
                     $"Based on this conversation, generate a concise and descriptive title (maximum 100 characters):\n\nUser: {userMessage}\n\nAssistant: {assistantResponse}",
                     null
                 );
-                //var tools = Anthropic.SDK.Common.Tool.GetAllAvailableTools(includeDefaults: false,
-                //                                       forceUpdate: true, clearCache: true);
                 var titleParameters = new MessageParameters()
                 {
                     Messages = new List<Message> { titlePrompt },
@@ -511,36 +545,41 @@ Use the following guidelines:
                             new CacheControl() { Type = CacheControlType.ephemeral }
                         )
                     },
-                    //Tools = tools.ToList(),
                 };
 
                 var titleResponse = await client.Messages.GetClaudeMessageAsync(titleParameters);
-                var generatedTitle = titleResponse.Content[0].ToString().Trim('"', ' ', '\n');
+                var generatedTitle = titleResponse.Message?.ToString()?.Trim('"', ' ', '\n') ?? "Chat Title";
 
-                // Ensure title doesn't exceed 100 characters
                 if (generatedTitle.Length > 100)
                 {
                     generatedTitle = generatedTitle.Substring(0, 97) + "...";
                 }
 
-                // Update thread title
-                currentThread.Title = generatedTitle;
-                dbContext.Update(currentThread);
-                await dbContext.SaveChangesAsync();
+                if (currentThread != null)
+                {
+                    currentThread.Title = generatedTitle;
+                    dbContext.Update(currentThread);
+                    await dbContext.SaveChangesAsync();
+                    _logger.LogInformation("Thread title generated and saved: {Title}", generatedTitle);
+                }
+                else
+                {
+                    _logger.LogWarning("currentThread was null, cannot save generated title.");
+                }
 
-                // Calculate title generation costs
-                var costs = GetModelCosts(modelChosen);
-                decimal titleInputCost = CalculateCost(titleResponse.Usage.InputTokens, costs.InputRate);
-                decimal titleOutputCost = CalculateCost(titleResponse.Usage.OutputTokens, costs.OutputRate);
+                if (titleResponse?.Usage != null)
+                {
+                    var costs = GetModelCosts(modelChosen);
+                    decimal titleInputCost = CalculateCost(titleResponse.Usage.InputTokens, costs.InputRate);
+                    decimal titleOutputCost = CalculateCost(titleResponse.Usage.OutputTokens, costs.OutputRate);
 
-                // Update tokens and cost
-                UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
-                UpdateCostAsync(Cost + titleInputCost + titleOutputCost);
+                    UpdateTokensAsync(Tokens + titleResponse.Usage.InputTokens + titleResponse.Usage.OutputTokens);
+                    UpdateCostAsync(Cost + titleInputCost + titleOutputCost);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating thread title");
-                // Don't throw - we don't want to interrupt the main conversation flow if title generation fails
             }
         }
 
@@ -559,13 +598,13 @@ Use the following guidelines:
                     Model.Sonnet4 => AnthropicModels.Claude4Sonnet,
                     Model.Sonnet37 => AnthropicModels.Claude37Sonnet,
                     Model.Opus4 => AnthropicModels.Claude4Opus,
-                    _ => AnthropicModels.Claude35Sonnet
+                    _ => AnthropicModels.Claude4Sonnet
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting model chosen");
-                return AnthropicModels.Claude35Sonnet; // Default fallback
+                return AnthropicModels.Claude4Sonnet;
             }
         }
 
@@ -576,7 +615,7 @@ Use the following guidelines:
         /// <returns>The cost structure for the model</returns>
         private ModelCosts GetModelCosts(string model)
         {
-            return MODEL_COSTS.TryGetValue(model, out var costs) ? costs : MODEL_COSTS[AnthropicModels.Claude35Sonnet];
+            return MODEL_COSTS.TryGetValue(model, out var costs) ? costs : MODEL_COSTS[AnthropicModels.Claude4Sonnet];
         }
 
         /// <summary>
@@ -593,7 +632,7 @@ Use the following guidelines:
             }
             catch (Exception)
             {
-                return 0; // Return 0 if calculation fails
+                return 0;
             }
         }
     }
