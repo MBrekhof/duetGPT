@@ -134,7 +134,8 @@ Use the following guidelines:
 1. Prioritize information from the provided knowledge base when available
 2. Supplement with your general knowledge when needed
 3. Clearly indicate when you're using provided knowledge versus general knowledge
-4. If the provided knowledge seems insufficient or irrelevant, rely on your general expertise";
+4. If the provided knowledge seems insufficient or irrelevant, rely on your general expertise
+5. Ultrathink and Ultracheck your answer before answering";
 
                 // Get selected prompt content if available
                 if (!string.IsNullOrEmpty(SelectedPrompt))
