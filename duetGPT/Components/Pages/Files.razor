@@ -82,16 +82,28 @@
 
 @if (showPdfViewer && selectedPdfContent != null)
 {
-    <DxPopup @bind-Visible="@showPdfViewer" HeaderText="PDF" Height="80%" Width="60%">
-         <BodyTemplate Context="PopupContext">
-    <div class="mt-4">
-        <h4>PDF Viewer</h4>
-
-        <DxPdfViewer CssClass="w-100 pdf-viewer"
-                     DocumentContent="@selectedPdfContent" 
-                     IsSinglePagePreview="true"
-                     />
-    </div>
-    </BodyTemplate>
+    <DxPopup @bind-Visible="@showPdfViewer" 
+             HeaderText="PDF Document"
+             Width="85vw"
+             Height="85vh"
+             MaxWidth="1400px"
+             MaxHeight="900px"
+             MinWidth="800px"
+             MinHeight="600px"
+             Scrollable="true"
+             AllowResize="true"
+             CssClass="pdf-popup">
+        <BodyTemplate Context="PopupContext">
+            <div class="pdf-viewer-container">
+                <DxPdfViewer @ref="pdfViewer"
+                             DocumentContent="@selectedPdfContent"
+                             CssClass="popup-pdf-viewer"
+                             SizeMode="SizeMode.Medium"
+                             ZoomLevel="1.0"
+                             IsSinglePagePreview="true"
+                             CustomizeToolbar="@OnCustomizeToolbar" />
+            </div>
+        </BodyTemplate>
     </DxPopup>
 }
+

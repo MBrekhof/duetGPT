@@ -1,0 +1,18 @@
+.log-content {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.alert {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}

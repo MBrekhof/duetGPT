@@ -1,0 +1,40 @@
+.bg-blue {
+    background-color: #add8e6;
+    color: #000000;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.bg-green {
+    background-color: #90ee90;
+    color: #000000;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.message-content {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.thread-link {
+    cursor: pointer;
+}
+
+.messages-scrollable {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.messages-flex {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.message-metadata {
+    font-size: 0.8em;
+    margin-top: 5px;
+}

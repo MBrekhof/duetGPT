@@ -1,5 +1,7 @@
 using Anthropic.SDK.Messaging;
+using DevExpress.Blazor.PdfViewer;
 using DevExpress.Blazor;
+using DevExpress.Blazor.Reporting.Models;
 using DevExpress.Pdf;
 using DevExpress.XtraRichEdit;
 using duetGPT.Data;
@@ -36,6 +38,7 @@ public partial class Files : ComponentBase
   private Dictionary<int, bool> embeddingSuccess = new Dictionary<int, bool>();
   private byte[]? selectedPdfContent;
   private bool showPdfViewer;
+  private DxPdfViewer? pdfViewer;
 
   private class TextChunk
   {
@@ -136,6 +139,28 @@ public partial class Files : ComponentBase
       });
     }
   }
+  /// <summary>
+  /// Customizes the PDF viewer toolbar to ensure navigation controls are available
+  /// </summary>
+  /// <param name="toolbarModel">The toolbar model to customize</param>
+  protected void OnCustomizeToolbar(ToolbarModel toolbarModel)
+  {
+    // Keep the default navigation controls but ensure they are visible and functional
+    // The built-in toolbar already contains navigation buttons for single page preview mode
+    // We don't need to remove or modify them, just ensure they work properly in popup context
+
+    // Optional: You can customize the toolbar here if needed
+    // For example, to show only navigation controls:
+    // var navigationItems = toolbarModel.AllItems.Where(item => 
+    //     item.Id == ToolbarItemId.FirstPage ||
+    //     item.Id == ToolbarItemId.PreviousPage ||
+    //     item.Id == ToolbarItemId.NextPage ||
+    //     item.Id == ToolbarItemId.LastPage ||
+    //     item.Id == ToolbarItemId.PageNumber).ToList();
+
+    // For now, keep all default toolbar items to maintain full functionality
+  }
+  
 
   private string NormalizeText(string text)
   {

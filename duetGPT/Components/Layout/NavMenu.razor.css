@@ -14,6 +14,9 @@
 
 .logo {
     text-align: center;
+    color: white;
+    font-size: larger;
+    font-weight: bold;
 }
 
 ::deep .menu-button-container {

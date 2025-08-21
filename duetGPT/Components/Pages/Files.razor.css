@@ -1,0 +1,39 @@
+.pdf-popup .dxbl-popup-content {
+    padding: 0;
+}
+
+.pdf-viewer-container {
+    width: 100%;
+    height: 75vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.popup-pdf-viewer {
+    width: 100% !important;
+    height: 100% !important;
+    border: none;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Ensure PDF content stays within bounds */
+.popup-pdf-viewer .dxbl-pdf-viewer-content {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    overflow: auto;
+}
+
+/* Fix for PDF pages not respecting container */
+.popup-pdf-viewer .dxbl-pdf-viewer-page {
+    max-width: 100% !important;
+    height: auto !important;
+}
+
+.grid-cell-align-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

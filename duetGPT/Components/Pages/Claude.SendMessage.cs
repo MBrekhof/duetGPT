@@ -158,10 +158,10 @@ Use the following guidelines:
                 }
 
                 // Add web search instruction if enabled
-                if (EnableWebSearch)
-                {
-                    systemPrompt += "\n\nYou have access to web search capabilities. Use them when you need current information or when the provided knowledge base doesn't contain sufficient information to answer the user's question.";
-                }
+                //if (EnableWebSearch)
+                //{
+                //    systemPrompt += "\n\nYou have access to web search capabilities. Use them when you need current information or when the provided knowledge base doesn't contain sufficient information to answer the user's question.";
+                //}
 
                 List<SystemMessage> systemMessages;
 

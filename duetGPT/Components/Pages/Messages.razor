@@ -4,26 +4,6 @@
 @using Markdig
 @rendermode InteractiveServer
 
-<style>
-    .bg-blue {
-        background-color: #add8e6;
-        color: #000000;
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-    }
-    .bg-green {
-        background-color: #90ee90;
-        color: #000000;
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 5px;
-    }
-    .message-content {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-    }
-</style>
 
 <h3>Message Threads</h3>
 
@@ -49,7 +29,7 @@ else
                 <CellDisplayTemplate>
                     @{
                         var thread = (context.DataItem as DuetThread);
-                        <div style="cursor: pointer;" @onclick="@(() => ShowThreadMessages(thread))">
+                        <div class="thread-link" @onclick="@(() => ShowThreadMessages(thread))">
                             @thread.Title
                         </div>
                     }
@@ -75,10 +55,10 @@ else
 
 <DxPopup @bind-Visible="@PopupVisible" HeaderText="Thread Messages" Width="800px">
     <Content>
-        <div style="max-height: 500px; overflow-y: auto;">
+        <div class="messages-scrollable">
             @if (ThreadMessages != null && ThreadMessages.Any())
             {
-                <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="messages-flex">
                     @{
                         var index = 0;
                         foreach (var message in ThreadMessages.OrderBy(m => m.Created))
@@ -88,7 +68,7 @@ else
                                 <div class="message-content">
                                     @((MarkupString)FormatMessage(message.Content))
                                 </div>
-                                <div style="font-size: 0.8em; margin-top: 5px;">
+                                <div class="message-metadata">
                                     Tokens: @message.TokenCount | Cost: @message.MessageCost.ToString("C")
                                 </div>
                             </div>
