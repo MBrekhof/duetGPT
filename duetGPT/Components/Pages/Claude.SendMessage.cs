@@ -42,10 +42,9 @@ namespace duetGPT.Components.Pages
 
         private static readonly Dictionary<string, ModelCosts> MODEL_COSTS = new()
         {
-            { AnthropicModels.Claude35Haiku, new ModelCosts(0.00025m, 0.00025m) },
-            { AnthropicModels.Claude4Sonnet, new ModelCosts(0.0003m, 0.0003m) },
-            { AnthropicModels.Claude37Sonnet, new ModelCosts(0.00035m, 0.00035m) },
-            { AnthropicModels.Claude4Opus, new ModelCosts(0.0004m, 0.0004m) }
+            { "claude-haiku-4-5-20251001", new ModelCosts(0.001m, 0.005m) },      // Claude Haiku 4.5: $1/$5 per MTok
+            { "claude-sonnet-4-5-20250929", new ModelCosts(0.003m, 0.015m) },     // Claude Sonnet 4.5: $3/$15 per MTok
+            { "claude-opus-4-1-20250805", new ModelCosts(0.015m, 0.075m) }        // Claude Opus 4.1: $15/$75 per MTok
         };
 
         /// <summary>
@@ -227,7 +226,7 @@ Use the following guidelines:
                             var extendedRequest = new MessageParameters()
                             {
                                 Messages = chatMessages.Concat(new[] { message }).ToList(),
-                                Model = AnthropicModels.Claude37Sonnet,
+                                Model = modelChosen,
                                 Stream = false,
                                 MaxTokens = 20000,
                                 Temperature = 1.0m,
@@ -299,7 +298,7 @@ Use the following guidelines:
                         {
                             Messages = apiCallMessages,
                             Model = modelChosen,
-                            MaxTokens = ModelValue == Model.Sonnet37 ? 8192 : 16384,
+                            MaxTokens = 16384,
                             Stream = false,
                             Temperature = 1.0m,
                             System = systemMessages,
@@ -595,17 +594,16 @@ Use the following guidelines:
             {
                 return modelValue switch
                 {
-                    Model.Haiku35 => AnthropicModels.Claude35Haiku,
-                    Model.Sonnet4 => AnthropicModels.Claude4Sonnet,
-                    Model.Sonnet37 => AnthropicModels.Claude37Sonnet,
-                    Model.Opus4 => AnthropicModels.Claude4Opus,
-                    _ => AnthropicModels.Claude4Sonnet
+                    Model.Haiku45 => "claude-haiku-4-5-20251001",
+                    Model.Sonnet45 => "claude-sonnet-4-5-20250929",
+                    Model.Opus41 => "claude-opus-4-1-20250805",
+                    _ => "claude-sonnet-4-5-20250929"
                 };
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting model chosen");
-                return AnthropicModels.Claude4Sonnet;
+                return "claude-sonnet-4-5-20250929";
             }
         }
 
@@ -616,20 +614,20 @@ Use the following guidelines:
         /// <returns>The cost structure for the model</returns>
         private ModelCosts GetModelCosts(string model)
         {
-            return MODEL_COSTS.TryGetValue(model, out var costs) ? costs : MODEL_COSTS[AnthropicModels.Claude4Sonnet];
+            return MODEL_COSTS.TryGetValue(model, out var costs) ? costs : MODEL_COSTS["claude-sonnet-4-5-20250929"];
         }
 
         /// <summary>
-        /// Calculates the cost based on token count and rate per token
+        /// Calculates the cost based on token count and rate per million tokens (MTok)
         /// </summary>
         /// <param name="tokens">Number of tokens</param>
-        /// <param name="ratePerToken">Rate per token</param>
+        /// <param name="ratePerMTok">Rate per million tokens (MTok)</param>
         /// <returns>The calculated cost</returns>
-        private static decimal CalculateCost(int tokens, decimal ratePerToken)
+        private static decimal CalculateCost(int tokens, decimal ratePerMTok)
         {
             try
             {
-                return tokens * ratePerToken;
+                return (tokens / 1_000_000m) * ratePerMTok;
             }
             catch (Exception)
             {

@@ -96,8 +96,8 @@ namespace duetGPT.Components.Pages
         /// <returns>True if extended thinking is available, false otherwise</returns>
         private bool IsExtendedThinkingAvailable()
         {
-            // Only available for Claude 3.7 Sonnet
-            return ModelValue == Model.Sonnet37;
+            // Available for Claude 4.5 Sonnet, Claude 4.5 Haiku, and Claude 4.1 Opus
+            return ModelValue == Model.Sonnet45 || ModelValue == Model.Haiku45 || ModelValue == Model.Opus41;
         }
 
         /// <summary>
@@ -159,10 +159,9 @@ namespace duetGPT.Components.Pages
 
         public enum Model
         {
-            Sonnet4,
-            Sonnet37,
-            Haiku35,
-            Opus4
+            Sonnet45,
+            Haiku45,
+            Opus41
         }
 
         private readonly IEnumerable<Model> _models = Enum.GetValues(typeof(Model)).Cast<Model>();

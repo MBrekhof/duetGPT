@@ -5,32 +5,32 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Anthropic.SDK" Version="5.4.1" />
-    <PackageReference Include="DevExpress.Blazor" Version="25.1.4" />
-    <PackageReference Include="DevExpress.Blazor.PdfViewer" Version="25.1.4" />
-    <PackageReference Include="DevExpress.Document.Processor" Version="25.1.4" />
-    <PackageReference Include="DevExpress.Pdf.Core" Version="25.1.4" />
-    <PackageReference Include="DevExpress.RichEdit.Core" Version="25.1.4" />
-    <PackageReference Include="DevExpress.RichEdit.Export" Version="25.1.4" />
+    <PackageReference Include="Anthropic.SDK" Version="5.6.0" />
+    <PackageReference Include="DevExpress.Blazor" Version="25.1.5" />
+    <PackageReference Include="DevExpress.Blazor.PdfViewer" Version="25.1.5" />
+    <PackageReference Include="DevExpress.Document.Processor" Version="25.1.5" />
+    <PackageReference Include="DevExpress.Pdf.Core" Version="25.1.5" />
+    <PackageReference Include="DevExpress.RichEdit.Core" Version="25.1.5" />
+    <PackageReference Include="DevExpress.RichEdit.Export" Version="25.1.5" />
     <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
-    <PackageReference Include="Markdig" Version="0.41.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.5" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.5">
+    <PackageReference Include="Markdig" Version="0.42.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-    <PackageReference Include="OpenAI-DotNet" Version="8.6.4" />
+    <PackageReference Include="OpenAI-DotNet" Version="8.8.2" />
     <PackageReference Include="Pgvector" Version="0.3.2" />
     <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.2.2" />
-    <PackageReference Include="System.Formats.Asn1" Version="9.0.5" />
-    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <PackageReference Include="System.Formats.Asn1" Version="9.0.10" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.3" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
     <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
-    <PackageReference Include="System.Text.Json" Version="9.0.6" />
+    <PackageReference Include="System.Text.Json" Version="9.0.10" />
     
     <PackageReference Include="Tiktoken" Version="2.2.0" />
   </ItemGroup>
