@@ -29,7 +29,7 @@ namespace duetGPT.Services
     public async Task<List<KnowledgeResult>> GetRelevantKnowledgeAsync(string userQuestion)
     {
       // Maximum allowed absolute distance from 1
-      const double MaxDistanceThreshold = 0.2; // Adjust this value as needed
+      const double MaxDistanceThreshold = 0.3; // Adjust this value as needed
 
       try
       {
