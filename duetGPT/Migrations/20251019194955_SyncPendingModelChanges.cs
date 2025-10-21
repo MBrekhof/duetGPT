@@ -18,23 +18,24 @@ namespace duetGPT.Migrations
                 oldClrType: typeof(decimal),
                 oldType: "numeric(18,2)");
 
-            migrationBuilder.AddColumn<decimal>(
-                name: "embeddingcost",
-                table: "ragdata",
-                type: "numeric",
-                nullable: true);
+            // Check if embeddingcost column exists before adding it
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'ragdata'
+                        AND column_name = 'embeddingcost'
+                    ) THEN
+                        ALTER TABLE ragdata ADD COLUMN embeddingcost numeric NULL;
+                    END IF;
+                END $$;
+            ");
 
-            migrationBuilder.AddColumn<string>(
-                name: "Metadata",
-                table: "KnowledgeResults",
-                type: "text",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "Metadata",
-                table: "KnowledgeQueryResults",
-                type: "text",
-                nullable: true);
+            // Note: KnowledgeResults and KnowledgeQueryResults are not database tables
+            // They are non-persisted entities (HasNoKey) used only for query results
+            // Therefore, no migration is needed for their Metadata properties
         }
 
         /// <inheritdoc />
@@ -43,14 +44,6 @@ namespace duetGPT.Migrations
             migrationBuilder.DropColumn(
                 name: "embeddingcost",
                 table: "ragdata");
-
-            migrationBuilder.DropColumn(
-                name: "Metadata",
-                table: "KnowledgeResults");
-
-            migrationBuilder.DropColumn(
-                name: "Metadata",
-                table: "KnowledgeQueryResults");
 
             migrationBuilder.AlterColumn<decimal>(
                 name: "Cost",
