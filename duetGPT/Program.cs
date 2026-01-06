@@ -83,24 +83,10 @@ builder.Services.AddScoped<IThreadSummarizationService, ThreadSummarizationServi
 builder.Services.AddScoped<IChatContextService, ChatContextService>();
 
 // Register IChatClient adapter for DevExpress DxAIChat integration
-builder.Services.AddChatClient(sp =>
-{
-    var anthropicService = sp.GetRequiredService<AnthropicService>();
-    var knowledgeService = sp.GetRequiredService<IKnowledgeService>();
-    var threadService = sp.GetRequiredService<IThreadService>();
-    var dbContextFactory = sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-    var logger = sp.GetRequiredService<ILogger<AnthropicChatClientAdapter>>();
-    var chatContext = sp.GetRequiredService<IChatContextService>();
-
-    return new AnthropicChatClientAdapter(
-        anthropicService,
-        knowledgeService,
-        threadService,
-        dbContextFactory,
-        logger,
-        chatContext,
-        modelId: "claude-sonnet-4-5-20250929");
-});
+// Register as scoped to properly handle scoped dependencies (DbContext, KnowledgeService, etc.)
+builder.Services.AddScoped<AnthropicChatClientAdapter>();
+builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
+    sp.GetRequiredService<AnthropicChatClientAdapter>());
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
