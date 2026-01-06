@@ -83,7 +83,7 @@ builder.Services.AddScoped<IThreadSummarizationService, ThreadSummarizationServi
 builder.Services.AddScoped<IChatContextService, ChatContextService>();
 
 // Register IChatClient adapter for DevExpress DxAIChat integration
-builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
+builder.Services.AddChatClient(sp =>
 {
     var anthropicService = sp.GetRequiredService<AnthropicService>();
     var knowledgeService = sp.GetRequiredService<IKnowledgeService>();
