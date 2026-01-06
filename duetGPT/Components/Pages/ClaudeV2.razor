@@ -1,0 +1,174 @@
+@page "/chat-v2"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using DevExpress.AIIntegration.Blazor.Chat
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<DxToastProvider Name="ClaudeV2Page"
+                 MaxToastCount="5"
+                 AnimationType="ToastAnimationType.Slide"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 DisplayTime="TimeSpan.FromSeconds(3)"
+                 Width="320px">
+</DxToastProvider>
+
+<div class="header-container">
+    <div class="title">Chat Application (v2 - DxAIChat)</div>
+    <div class="combobox-container">
+        <button class="btn btn-yellow" @onclick="SummarizeThread" disabled="@IsProcessing" title="Save thread summary to knowledge base">
+            <i class="fas fa-save"></i>
+        </button>
+        <DxComboBox Data="@_models" @bind-Value="@ModelValue" ShowDropDownButton="false">
+            <Buttons>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
+            </Buttons>
+        </DxComboBox>
+        <DxComboBox Data="@Prompts"
+                    @bind-Value="@SelectedPrompt"
+                    TextFieldName="Name"
+                    ValueFieldName="Name"
+                    NullText="Default">
+            <Buttons>
+                <DxComboBoxDropDownButton Position="EditorButtonPosition.Left" />
+            </Buttons>
+        </DxComboBox>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="chat-container">
+        <DxAIChat ChatClient="@ChatClient"
+                  MessageSent="OnMessageSent"
+                  ResponseReceived="OnResponseReceived"
+                  CssClass="custom-ai-chat">
+        </DxAIChat>
+    </div>
+
+    <div class="sidebar">
+        <div class="info-box">
+            <div class="info-label">Thread ID:</div>
+            <div>@(CurrentThread?.Id ?? 0)</div>
+            <div class="info-label">Tokens:</div>
+            <div>@TotalTokens</div>
+            <div class="info-label">Cost:</div>
+            <div>$@TotalCost.ToString("F4")</div>
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableWebSearch" />
+                <span>Enable Web Search</span>
+            </div>
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableExtendedThinking" />
+                <span>Enable Extended Thinking</span>
+            </div>
+            @if (EnableExtendedThinking && !IsExtendedThinkingAvailable())
+            {
+                <div class="warning-text">Only available with Claude Sonnet/Opus</div>
+            }
+            <div class="toggle-container">
+                <DxCheckBox @bind-Checked="@EnableRag" />
+                <span>Enable RAG</span>
+            </div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Select Files:</div>
+            <DxListBox Data="@AvailableFiles"
+                      @bind-Values="@SelectedFiles"
+                      TextFieldName="FileName"
+                      ValueFieldName="Id"
+                      SelectionMode="ListBoxSelectionMode.Multiple"
+                      ShowCheckboxes="true"
+                      SizeMode="SizeMode.Small"
+                      ListBoxHeight="@null">
+            </DxListBox>
+        </div>
+        <div class="info-box">
+            <div class="info-label">Upload Image:</div>
+            <InputFile class="image-upload" OnChange="@HandleImageUpload" accept="image/*" />
+            @if (!string.IsNullOrEmpty(ImageUrl))
+            {
+                <div class="image-container" @onclick="ShowImagePopup">
+                    <img src="@ImageUrl" class="uploaded-image" alt="Uploaded image" decoding="async" />
+                </div>
+            }
+        </div>
+        <div class="info-box">
+            <button class="btn btn-danger" @onclick="ShowNewThreadConfirmation" disabled="@IsProcessing">
+                <i class="fas fa-plus"></i> New Thread
+            </button>
+        </div>
+    </div>
+</div>
+
+<DxPopup HeaderText="Confirm New Thread"
+        @bind-Visible="@IsNewThreadPopupVisible"
+        ShowFooter="true">
+    <BodyTemplate>
+        Are you sure you want to start a new thread? This will clear the current conversation.
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-secondary" @onclick="@(() => IsNewThreadPopupVisible = false)">Cancel</button>
+        <button class="btn btn-danger" @onclick="ConfirmNewThread">Confirm</button>
+    </FooterTemplate>
+</DxPopup>
+
+<DxPopup @bind-Visible="@IsImagePopupVisible"
+        ShowFooter="false"
+        CloseOnEscape="true"
+        CloseOnOutsideClick="true"
+        Width="auto"
+        Height="auto"
+        HeaderText="Image Preview">
+    <HeaderTemplate>
+        <div class="popup-header-content">
+            <span>Image Preview</span>
+            <button type="button" class="btn-close" @onclick="@(() => IsImagePopupVisible = false)"></button>
+        </div>
+    </HeaderTemplate>
+    <BodyTemplate>
+        @if (!string.IsNullOrEmpty(ImageUrl))
+        {
+            <img src="@ImageUrl" class="popup-image" alt="Full size image" />
+        }
+    </BodyTemplate>
+</DxPopup>
+
+<DxPopup HeaderText="Claude's Thinking Process"
+        @bind-Visible="@IsThinkingPopupVisible"
+        ShowFooter="true"
+        Width="800px"
+        MaxHeight="80vh"
+        CloseOnEscape="true"
+        CloseOnOutsideClick="true">
+    <BodyTemplate>
+        <div class="thinking-box">
+            @((MarkupString)ThinkingContent)
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <button class="btn btn-primary" @onclick="@(() => IsThinkingPopupVisible = false)">Close</button>
+    </FooterTemplate>
+</DxPopup>
+
+<style>
+    .chat-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .custom-ai-chat {
+        height: 100%;
+        width: 100%;
+    }
+
+    .main-content {
+        display: flex;
+        gap: 20px;
+        height: calc(100vh - 200px);
+        padding: 20px;
+    }
+</style>
