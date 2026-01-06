@@ -157,8 +157,8 @@ namespace duetGPT.Services
       }
 
       var client = _anthropicService.GetAnthropicClient();
-      MessageResponse res;
-      string markdown;
+      MessageResponse? res = null;
+      string markdown = string.Empty;
       string? thinkingContent = null;
 
       // Check if extended thinking is enabled and available

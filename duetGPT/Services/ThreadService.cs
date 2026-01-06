@@ -79,7 +79,7 @@ namespace duetGPT.Services
 
         var messages = await dbContext.Messages
             .Where(m => m.ThreadId == threadId)
-            .OrderBy(m => m.Timestamp)
+            .OrderBy(m => m.Created)
             .ToListAsync();
 
         var anthropicMessages = new List<Message>();
