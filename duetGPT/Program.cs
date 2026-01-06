@@ -30,6 +30,9 @@ builder.Services.AddDevExpressBlazor(options =>
 
 builder.Services.AddDevExpressServerSideBlazorPdfViewer();
 
+// Add DevExpress AI Integration services for DxAIChat
+builder.Services.AddDevExpressAI();
+
 // Configure the maximum request body size to 50 MB
 builder.Services.Configure<FormOptions>(options =>
 {
