@@ -70,6 +70,12 @@ builder.Services.AddSingleton<OpenAIService>();
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
 
+// Add new chat services
+builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
+builder.Services.AddScoped<IThreadService, ThreadService>();
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IThreadSummarizationService, ThreadSummarizationService>();
+
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
 
