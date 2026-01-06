@@ -76,6 +76,24 @@ builder.Services.AddScoped<IThreadService, ThreadService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IThreadSummarizationService, ThreadSummarizationService>();
 
+// Register IChatClient adapter for DevExpress DxAIChat integration
+builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
+{
+    var anthropicService = sp.GetRequiredService<AnthropicService>();
+    var knowledgeService = sp.GetRequiredService<IKnowledgeService>();
+    var threadService = sp.GetRequiredService<IThreadService>();
+    var dbContextFactory = sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    var logger = sp.GetRequiredService<ILogger<AnthropicChatClientAdapter>>();
+
+    return new AnthropicChatClientAdapter(
+        anthropicService,
+        knowledgeService,
+        threadService,
+        dbContextFactory,
+        logger,
+        modelId: "claude-sonnet-4-5-20250929");
+});
+
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
 
