@@ -8,3 +8,4 @@ duetGPT/appsettings.Development.json
 *.bak
 *.txt
 duetGPT/TempImages
+/duetGPT/appsettings.json
