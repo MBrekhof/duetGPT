@@ -79,6 +79,9 @@ builder.Services.AddScoped<IThreadService, ThreadService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IThreadSummarizationService, ThreadSummarizationService>();
 
+// Add chat context service for sharing state between UI and IChatClient adapter
+builder.Services.AddScoped<IChatContextService, ChatContextService>();
+
 // Register IChatClient adapter for DevExpress DxAIChat integration
 builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
 {
@@ -87,6 +90,7 @@ builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
     var threadService = sp.GetRequiredService<IThreadService>();
     var dbContextFactory = sp.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
     var logger = sp.GetRequiredService<ILogger<AnthropicChatClientAdapter>>();
+    var chatContext = sp.GetRequiredService<IChatContextService>();
 
     return new AnthropicChatClientAdapter(
         anthropicService,
@@ -94,6 +98,7 @@ builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
         threadService,
         dbContextFactory,
         logger,
+        chatContext,
         modelId: "claude-sonnet-4-5-20250929");
 });
 

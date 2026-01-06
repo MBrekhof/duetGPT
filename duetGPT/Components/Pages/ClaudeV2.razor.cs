@@ -19,7 +19,7 @@ namespace duetGPT.Components.Pages
         public required ILogger<ClaudeV2> Logger { get; set; }
 
         [Inject]
-        public required IChatClient ChatClient { get; set; }
+        public required IChatContextService ChatContext { get; set; }
 
         [Inject]
         public required IThreadService ThreadService { get; set; }
@@ -101,6 +101,7 @@ namespace duetGPT.Components.Pages
                 await LoadAvailableFiles();
                 await LoadPrompts();
                 await CreateInitialThread();
+                UpdateChatContext(); // Initialize the shared chat context
                 StateHasChanged();
             }
         }
@@ -127,6 +128,9 @@ namespace duetGPT.Components.Pages
                 {
                     await CreateInitialThread();
                 }
+
+                // Update chat context with current UI state
+                UpdateChatContext();
 
                 Logger.LogInformation("Message will be sent through DxAIChat to thread {ThreadId}", CurrentThread?.Id);
             }
@@ -182,27 +186,16 @@ namespace duetGPT.Components.Pages
 
         #region Helper Methods
 
-        private ChatOptions BuildChatOptions()
+        private void UpdateChatContext()
         {
-            var options = new ChatOptions
-            {
-                ModelId = GetModelString(ModelValue),
-                Temperature = 1.0f,
-                MaxOutputTokens = 16384
-            };
-
-            // Add context via AdditionalProperties
-            options.AdditionalProperties = new Microsoft.Extensions.AI.AdditionalPropertiesDictionary
-            {
-                ["selectedFiles"] = SelectedFiles,
-                ["threadId"] = CurrentThread?.Id ?? 0,
-                ["customPrompt"] = GetSelectedPromptContent(),
-                ["enableRag"] = EnableRag,
-                ["enableWebSearch"] = EnableWebSearch,
-                ["enableExtendedThinking"] = EnableExtendedThinking
-            };
-
-            return options;
+            // Update the shared context service with current UI state
+            ChatContext.SelectedFiles = SelectedFiles;
+            ChatContext.ThreadId = CurrentThread?.Id ?? 0;
+            ChatContext.CustomPrompt = GetSelectedPromptContent();
+            ChatContext.EnableRag = EnableRag;
+            ChatContext.EnableWebSearch = EnableWebSearch;
+            ChatContext.EnableExtendedThinking = EnableExtendedThinking;
+            ChatContext.ModelId = GetModelString(ModelValue);
         }
 
         private string? GetSelectedPromptContent()

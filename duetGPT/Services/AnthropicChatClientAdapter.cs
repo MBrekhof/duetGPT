@@ -20,15 +20,8 @@ namespace duetGPT.Services
     private readonly IThreadService _threadService;
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ILogger<AnthropicChatClientAdapter> _logger;
+    private readonly IChatContextService _chatContext;
     private readonly string _defaultModelId;
-
-    // Context injection keys for ChatOptions.AdditionalProperties
-    private const string KEY_SELECTED_FILES = "selectedFiles";
-    private const string KEY_THREAD_ID = "threadId";
-    private const string KEY_CUSTOM_PROMPT = "customPrompt";
-    private const string KEY_ENABLE_RAG = "enableRag";
-    private const string KEY_ENABLE_WEBSEARCH = "enableWebSearch";
-    private const string KEY_ENABLE_THINKING = "enableExtendedThinking";
 
     public AnthropicChatClientAdapter(
         AnthropicService anthropicService,
@@ -36,6 +29,7 @@ namespace duetGPT.Services
         IThreadService threadService,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         ILogger<AnthropicChatClientAdapter> logger,
+        IChatContextService chatContext,
         string modelId = "claude-sonnet-4-5-20250929")
     {
       _anthropicService = anthropicService;
@@ -43,6 +37,7 @@ namespace duetGPT.Services
       _threadService = threadService;
       _dbContextFactory = dbContextFactory;
       _logger = logger;
+      _chatContext = chatContext;
       _defaultModelId = modelId;
     }
 
@@ -75,7 +70,7 @@ namespace duetGPT.Services
 
         // Extract context from options
         var context = ExtractContext(options);
-        var modelId = options?.ModelId ?? _defaultModelId;
+        var modelId = _chatContext.ModelId ?? _defaultModelId;
 
         // Get the user's last message
         var lastUserMessage = chatMessagesList.LastOrDefault(m => m.Role == ChatRole.User);
@@ -209,7 +204,7 @@ namespace duetGPT.Services
 
       // Extract context from options
       var context = ExtractContext(options);
-      var modelId = options?.ModelId ?? _defaultModelId;
+      var modelId = _chatContext.ModelId ?? _defaultModelId;
 
       // Get the user's last message
       var lastUserMessage = chatMessagesList.LastOrDefault(m => m.Role == ChatRole.User);
@@ -270,28 +265,15 @@ namespace duetGPT.Services
 
     private RequestContext ExtractContext(ChatOptions? options)
     {
-      if (options?.AdditionalProperties == null)
-      {
-        return new RequestContext();
-      }
-
+      // Read context from the shared chat context service instead of ChatOptions
       return new RequestContext
       {
-        SelectedFiles = options.AdditionalProperties.TryGetValue(KEY_SELECTED_FILES, out var files)
-                        ? (IEnumerable<int>)(files ?? Enumerable.Empty<int>())
-                        : Enumerable.Empty<int>(),
-        ThreadId = options.AdditionalProperties.TryGetValue(KEY_THREAD_ID, out var threadId)
-                   ? (int)(threadId ?? 0)
-                   : 0,
-        CustomPrompt = options.AdditionalProperties.TryGetValue(KEY_CUSTOM_PROMPT, out var prompt)
-                       ? prompt as string
-                       : null,
-        EnableRag = options.AdditionalProperties.TryGetValue(KEY_ENABLE_RAG, out var enableRag)
-                    && (bool)(enableRag ?? false),
-        EnableWebSearch = options.AdditionalProperties.TryGetValue(KEY_ENABLE_WEBSEARCH, out var enableWebSearch)
-                          && (bool)(enableWebSearch ?? false),
-        EnableExtendedThinking = options.AdditionalProperties.TryGetValue(KEY_ENABLE_THINKING, out var enableThinking)
-                                 && (bool)(enableThinking ?? false)
+        SelectedFiles = _chatContext.SelectedFiles,
+        ThreadId = _chatContext.ThreadId,
+        CustomPrompt = _chatContext.CustomPrompt,
+        EnableRag = _chatContext.EnableRag,
+        EnableWebSearch = _chatContext.EnableWebSearch,
+        EnableExtendedThinking = _chatContext.EnableExtendedThinking
       };
     }
 
