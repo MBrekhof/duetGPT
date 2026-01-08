@@ -86,13 +86,13 @@ builder.Services.AddScoped<IChatContextService, ChatContextService>();
 // Register as scoped to properly handle scoped dependencies (DbContext, KnowledgeService, etc.)
 builder.Services.AddScoped<AnthropicChatClientAdapter>();
 
-// Register both non-keyed (for component injection) and keyed (for DxAIChat discovery)
+// Register non-keyed for component injection
 builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
     sp.GetRequiredService<AnthropicChatClientAdapter>());
 
-builder.Services.AddKeyedScoped<Microsoft.Extensions.AI.IChatClient>(
-    "Anthropic",
-    (sp, key) => sp.GetRequiredService<AnthropicChatClientAdapter>());
+// Register with AddKeyedChatClient (Microsoft.Extensions.AI extension method)
+builder.Services.AddKeyedChatClient("Anthropic", sp =>
+    sp.GetRequiredService<AnthropicChatClientAdapter>());
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();

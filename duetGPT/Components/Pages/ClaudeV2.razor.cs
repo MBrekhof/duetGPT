@@ -124,12 +124,7 @@ namespace duetGPT.Components.Pages
             try
             {
                 IsProcessing = true;
-                Logger.LogWarning("=== OnMessageSent FIRED ===");
-
-                // Inspect MessageSentEventArgs properties
-                Logger.LogWarning("MessageSentEventArgs type: {Type}, properties: {Props}",
-                    args.GetType().FullName,
-                    string.Join(", ", args.GetType().GetProperties().Select(p => $"{p.Name}: {p.PropertyType.Name}")));
+                Logger.LogWarning("=== OnMessageSent FIRED === Content: {Content}", args.Content);
 
                 // Create thread if it doesn't exist
                 if (CurrentThread == null)
@@ -140,8 +135,10 @@ namespace duetGPT.Components.Pages
                 // Update chat context with current UI state
                 UpdateChatContext();
 
-                Logger.LogWarning("Context updated. ThreadId={ThreadId}, Model={Model}, EnableRag={EnableRag}",
-                    CurrentThread?.Id, ModelValue, EnableRag);
+                Logger.LogWarning("Context updated. DxAIChat should now call IChatClient automatically via keyed service");
+
+                // DxAIChat handles the actual chat client call through the keyed service registration
+                // We just prepare the context here
             }
             catch (Exception ex)
             {
