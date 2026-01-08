@@ -46,6 +46,7 @@ namespace duetGPT.Components.Pages
 
         #region Private Fields
 
+        private DevExpress.AIIntegration.Blazor.Chat.DxAIChat DxAiChat = default!;
         private bool IsProcessing;
         private DuetThread? CurrentThread;
         private string? ImageUrl;
@@ -117,80 +118,10 @@ namespace duetGPT.Components.Pages
 
         #endregion
 
-        #region DxAIChat Event Handlers
+        #region DxAIChat Integration
 
-        private async Task OnMessageSent(MessageSentEventArgs args)
-        {
-            try
-            {
-                IsProcessing = true;
-                Logger.LogWarning("=== OnMessageSent FIRED === Content: {Content}", args.Content);
-
-                // Create thread if it doesn't exist
-                if (CurrentThread == null)
-                {
-                    await CreateInitialThread();
-                }
-
-                // Update chat context with current UI state
-                UpdateChatContext();
-
-                Logger.LogWarning("Context updated. DxAIChat should now call IChatClient automatically via keyed service");
-
-                // DxAIChat handles the actual chat client call through the keyed service registration
-                // We just prepare the context here
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error in OnMessageSent");
-                ToastService.ShowToast(new ToastOptions()
-                {
-                    ProviderName = "ClaudeV2Page",
-                    ThemeMode = ToastThemeMode.Dark,
-                    RenderStyle = ToastRenderStyle.Danger,
-                    Title = "Error",
-                    Text = "Error processing message"
-                });
-            }
-            finally
-            {
-                IsProcessing = false;
-            }
-        }
-
-        private async Task OnResponseReceived(ResponseReceivedEventArgs args)
-        {
-            try
-            {
-                Logger.LogWarning("=== OnResponseReceived FIRED ===");
-
-                // Inspect ResponseReceivedEventArgs properties
-                Logger.LogWarning("ResponseReceivedEventArgs type: {Type}, properties: {Props}",
-                    args.GetType().FullName,
-                    string.Join(", ", args.GetType().GetProperties().Select(p => $"{p.Name}: {p.PropertyType.Name}")));
-
-                if (CurrentThread == null) return;
-
-                Logger.LogWarning("Response received for thread {ThreadId}", CurrentThread.Id);
-
-                // DxAIChat handles the message display automatically
-                // We just track basic metrics here
-                TotalTokens += 100; // Placeholder - will be updated when we can access usage
-                TotalCost += 0.001m; // Placeholder
-
-                // Generate thread title if this is the first exchange
-                if (CurrentThread.Title == "Not yet created")
-                {
-                    await GenerateThreadTitle("Response content");
-                }
-
-                StateHasChanged();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error in OnResponseReceived");
-            }
-        }
+        // DxAIChat automatically uses the injected IChatClient through DI
+        // No manual event handlers needed - it calls GetResponseAsync automatically
 
         #endregion
 

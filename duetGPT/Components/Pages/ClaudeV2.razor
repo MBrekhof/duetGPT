@@ -40,9 +40,7 @@
 
 <div class="main-content">
     <div class="chat-container">
-        <DxAIChat ChatClientServiceKey="Anthropic"
-                  MessageSent="OnMessageSent"
-                  ResponseReceived="OnResponseReceived"
+        <DxAIChat @ref="DxAiChat"
                   CssClass="custom-ai-chat">
         </DxAIChat>
     </div>
