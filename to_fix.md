@@ -1,12 +1,27 @@
 # DxAIChat Integration - Issue Tracking
 
 ## Current Issue
-**DxAIChat component loads successfully but does not receive responses when messages are sent**
+**DxAIChat component loads successfully but GetResponseAsync is never called**
 
-- No errors in console or logs
-- No response appears in chat
-- Message sends but nothing happens
-- Classic Claude page (/claude) works fine
+### Symptoms
+- OnMessageSent event fires correctly ✓
+- IChatClient registered successfully (both keyed and non-keyed) ✓
+- GetResponseAsync NEVER called ✗
+- No response appears in chat ✗
+
+### Investigation Results
+1. **Keyed service registration**: Tried both `AddKeyedScoped` and `AddKeyedChatClient`
+2. **Component property**: Added `ChatClientServiceKey="Anthropic"` to DxAIChat
+3. **IChatClient injection**: Re-added `[Inject] IChatClient` to component
+4. **Scoped service resolution**: Using `AddKeyedScoped` to avoid root provider issues
+
+**None of these made DxAIChat call GetResponseAsync.**
+
+### Hypothesis
+DxAIChat might NOT automatically call IChatClient. We may need to:
+1. Manually call `ChatClient.GetResponseAsync()` in `OnMessageSent` event
+2. Use DxAIChat API to add the response back to the chat UI
+3. Check if there's an `AddMessageAsync` or similar method on the Chat object
 
 ## Architecture Implemented
 
