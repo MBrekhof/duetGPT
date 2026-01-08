@@ -86,7 +86,10 @@ builder.Services.AddScoped<IChatContextService, ChatContextService>();
 // Register as scoped to properly handle scoped dependencies (DbContext, KnowledgeService, etc.)
 builder.Services.AddScoped<AnthropicChatClientAdapter>();
 
-// Register with keyed service for DxAIChat (required by DevExpress pattern)
+// Register both non-keyed (for component injection) and keyed (for DxAIChat discovery)
+builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
+    sp.GetRequiredService<AnthropicChatClientAdapter>());
+
 builder.Services.AddKeyedScoped<Microsoft.Extensions.AI.IChatClient>(
     "Anthropic",
     (sp, key) => sp.GetRequiredService<AnthropicChatClientAdapter>());
