@@ -85,8 +85,11 @@ builder.Services.AddScoped<IChatContextService, ChatContextService>();
 // Register IChatClient adapter for DevExpress DxAIChat integration
 // Register as scoped to properly handle scoped dependencies (DbContext, KnowledgeService, etc.)
 builder.Services.AddScoped<AnthropicChatClientAdapter>();
-builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
-    sp.GetRequiredService<AnthropicChatClientAdapter>());
+
+// Register with keyed service for DxAIChat (required by DevExpress pattern)
+builder.Services.AddKeyedScoped<Microsoft.Extensions.AI.IChatClient>(
+    "Anthropic",
+    (sp, key) => sp.GetRequiredService<AnthropicChatClientAdapter>());
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
