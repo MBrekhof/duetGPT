@@ -140,6 +140,17 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "An error occurred while applying database migrations.");
     }
+
+    // Verify IChatClient registration for DxAIChat integration
+    try
+    {
+        var chatClient = services.GetRequiredService<Microsoft.Extensions.AI.IChatClient>();
+        Log.Warning("=== IChatClient VERIFIED === Type: {Type}", chatClient.GetType().FullName);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "CRITICAL: IChatClient not registered properly!");
+    }
 }
 
 app.Run();

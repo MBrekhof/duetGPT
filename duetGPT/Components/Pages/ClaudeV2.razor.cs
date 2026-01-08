@@ -19,6 +19,9 @@ namespace duetGPT.Components.Pages
         public required ILogger<ClaudeV2> Logger { get; set; }
 
         [Inject]
+        public required Microsoft.Extensions.AI.IChatClient ChatClient { get; set; }
+
+        [Inject]
         public required IChatContextService ChatContext { get; set; }
 
         [Inject]
@@ -121,7 +124,12 @@ namespace duetGPT.Components.Pages
             try
             {
                 IsProcessing = true;
-                Logger.LogInformation("Message sent event triggered");
+                Logger.LogWarning("=== OnMessageSent FIRED ===");
+
+                // Inspect MessageSentEventArgs properties
+                Logger.LogWarning("MessageSentEventArgs type: {Type}, properties: {Props}",
+                    args.GetType().FullName,
+                    string.Join(", ", args.GetType().GetProperties().Select(p => $"{p.Name}: {p.PropertyType.Name}")));
 
                 // Create thread if it doesn't exist
                 if (CurrentThread == null)
@@ -132,7 +140,8 @@ namespace duetGPT.Components.Pages
                 // Update chat context with current UI state
                 UpdateChatContext();
 
-                Logger.LogInformation("Message will be sent through DxAIChat to thread {ThreadId}", CurrentThread?.Id);
+                Logger.LogWarning("Context updated. ThreadId={ThreadId}, Model={Model}, EnableRag={EnableRag}",
+                    CurrentThread?.Id, ModelValue, EnableRag);
             }
             catch (Exception ex)
             {
@@ -156,12 +165,16 @@ namespace duetGPT.Components.Pages
         {
             try
             {
-                Logger.LogInformation("Response received event triggered");
+                Logger.LogWarning("=== OnResponseReceived FIRED ===");
+
+                // Inspect ResponseReceivedEventArgs properties
+                Logger.LogWarning("ResponseReceivedEventArgs type: {Type}, properties: {Props}",
+                    args.GetType().FullName,
+                    string.Join(", ", args.GetType().GetProperties().Select(p => $"{p.Name}: {p.PropertyType.Name}")));
 
                 if (CurrentThread == null) return;
 
-                // Log for debugging - we'll inspect args at runtime
-                Logger.LogInformation("Response received for thread {ThreadId}", CurrentThread.Id);
+                Logger.LogWarning("Response received for thread {ThreadId}", CurrentThread.Id);
 
                 // DxAIChat handles the message display automatically
                 // We just track basic metrics here

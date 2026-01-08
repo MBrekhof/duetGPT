@@ -66,11 +66,13 @@ namespace duetGPT.Services
       try
       {
         var chatMessagesList = chatMessages.ToList();
-        _logger.LogInformation("GetResponseAsync called with {Count} messages", chatMessagesList.Count);
+        _logger.LogWarning("=== GetResponseAsync CALLED === Message count: {Count}", chatMessagesList.Count);
 
         // Extract context from options
         var context = ExtractContext(options);
         var modelId = _chatContext.ModelId ?? _defaultModelId;
+        _logger.LogWarning("Context: ThreadId={ThreadId}, EnableRag={EnableRag}, EnableExtendedThinking={EnableExtendedThinking}, ModelId={ModelId}",
+            context.ThreadId, context.EnableRag, context.EnableExtendedThinking, modelId);
 
         // Get the user's last message
         var lastUserMessage = chatMessagesList.LastOrDefault(m => m.Role == ChatRole.User);
@@ -200,11 +202,13 @@ namespace duetGPT.Services
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
       var chatMessagesList = chatMessages.ToList();
-      _logger.LogInformation("GetStreamingResponseAsync called with {Count} messages", chatMessagesList.Count);
+      _logger.LogWarning("=== GetStreamingResponseAsync CALLED === Message count: {Count}", chatMessagesList.Count);
 
       // Extract context from options
       var context = ExtractContext(options);
       var modelId = _chatContext.ModelId ?? _defaultModelId;
+      _logger.LogWarning("Streaming Context: ThreadId={ThreadId}, EnableRag={EnableRag}, ModelId={ModelId}",
+          context.ThreadId, context.EnableRag, modelId);
 
       // Get the user's last message
       var lastUserMessage = chatMessagesList.LastOrDefault(m => m.Role == ChatRole.User);
