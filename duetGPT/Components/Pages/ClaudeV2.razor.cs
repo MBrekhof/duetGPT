@@ -209,8 +209,21 @@ namespace duetGPT.Components.Pages
         private async Task ConfirmNewThread()
         {
             IsNewThreadPopupVisible = false;
+
+            // Clear the DxAIChat component's message history
+            if (DxAiChat != null)
+            {
+                var emptyMessages = new List<DevExpress.AIIntegration.Blazor.Chat.BlazorChatMessage>();
+                DxAiChat.LoadMessages(emptyMessages);
+            }
+
             await ClearImageData();
             await CreateInitialThread();
+
+            // Reset UI state
+            TotalTokens = 0;
+            TotalCost = 0;
+
             StateHasChanged();
         }
 

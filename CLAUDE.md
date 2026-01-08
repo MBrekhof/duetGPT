@@ -31,6 +31,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 duetGPT is a Blazor Server application built on .NET 9.0 that provides a chat interface for interacting with Claude (Anthropic) and OpenAI models. The application features RAG (Retrieval-Augmented Generation) capabilities using PostgreSQL with pgvector for semantic search, document processing, and extended thinking mode support.
 
+## Chat Interface
+
+The application uses DevExpress DxAIChat component at:
+- `/` (default route)
+- `/chat-v2` (legacy route, redirects to same page)
+
+The classic custom chat interface was replaced in January 2025 with the modern DxAIChat-based implementation, which provides the same features (RAG, extended thinking, file attachments, custom prompts) with improved UI/UX.
+
 ## Build and Run Commands
 
 ```bash
