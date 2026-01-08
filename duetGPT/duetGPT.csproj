@@ -46,6 +46,7 @@
     <Compile Remove="Services\DeepSeekService.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="nul" />
     <None Remove="Uploads\remote report.pdf" />
   </ItemGroup>
   <ItemGroup>
