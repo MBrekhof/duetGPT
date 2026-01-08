@@ -1,0 +1,145 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: ankane/pgvector:latest
+        env:
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: duetgpt_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Setup Node.js (for Playwright)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Install Playwright browsers
+      run: |
+        cd duetGPT.Tests
+        pwsh bin/Release/net10.0/playwright.ps1 install --with-deps
+
+    - name: Create test appsettings
+      run: |
+        cd duetGPT
+        cat > appsettings.Testing.json << 'EOF'
+        {
+          "Anthropic": {
+            "ApiKey": "${{ secrets.ANTHROPIC_API_KEY }}"
+          },
+          "ConnectionStrings": {
+            "DefaultConnection": "Host=localhost;Port=5432;Database=duetgpt_test;Username=postgres;Password=test_password"
+          },
+          "Logging": {
+            "LogLevel": {
+              "Default": "Warning",
+              "Microsoft.AspNetCore": "Warning"
+            }
+          }
+        }
+        EOF
+
+    - name: Start application in background
+      run: |
+        cd duetGPT
+        dotnet run --no-build --configuration Release --urls "https://localhost:44391" &
+        APP_PID=$!
+        echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+        echo "Started application with PID: $APP_PID"
+      env:
+        ASPNETCORE_ENVIRONMENT: Testing
+        ASPNETCORE_URLS: https://localhost:44391
+        ASPNETCORE_Kestrel__Certificates__Default__Path: ""
+        ASPNETCORE_Kestrel__Certificates__Default__Password: ""
+
+    - name: Wait for application to start
+      run: |
+        echo "Waiting for application to be ready..."
+        for i in {1..60}; do
+          if curl -k -f https://localhost:44391 > /dev/null 2>&1; then
+            echo "Application is ready!"
+            exit 0
+          fi
+          echo "Attempt $i: Application not ready yet..."
+          sleep 2
+        done
+        echo "Application failed to start within timeout"
+        exit 1
+
+    - name: Run Playwright tests
+      run: |
+        cd duetGPT.Tests
+        dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=detailed"
+      env:
+        ASPNETCORE_ENVIRONMENT: Testing
+
+    - name: Stop application
+      if: always()
+      run: |
+        if [ ! -z "$APP_PID" ]; then
+          echo "Stopping application (PID: $APP_PID)"
+          kill $APP_PID 2>/dev/null || true
+        fi
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          duetGPT.Tests/TestResults/*.trx
+          duetGPT.Tests/bin/Release/net10.0/playwright-results/
+        retention-days: 30
+
+    - name: Upload screenshots on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-screenshots
+        path: duetGPT.Tests/bin/Release/net10.0/playwright-results/**/*.png
+        retention-days: 30
+
+    - name: Test Report Summary
+      if: always()
+      run: |
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        if [ -f duetGPT.Tests/TestResults/test-results.trx ]; then
+          PASSED=$(grep -c 'outcome="Passed"' duetGPT.Tests/TestResults/test-results.trx || echo "0")
+          FAILED=$(grep -c 'outcome="Failed"' duetGPT.Tests/TestResults/test-results.trx || echo "0")
+          echo "✅ Passed: $PASSED" >> $GITHUB_STEP_SUMMARY
+          echo "❌ Failed: $FAILED" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "⚠️ Test results file not found" >> $GITHUB_STEP_SUMMARY
+        fi
