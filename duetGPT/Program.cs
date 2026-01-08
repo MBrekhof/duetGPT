@@ -90,9 +90,10 @@ builder.Services.AddScoped<AnthropicChatClientAdapter>();
 builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
     sp.GetRequiredService<AnthropicChatClientAdapter>());
 
-// Register with AddKeyedChatClient (Microsoft.Extensions.AI extension method)
-builder.Services.AddKeyedChatClient("Anthropic", sp =>
-    sp.GetRequiredService<AnthropicChatClientAdapter>());
+// Register with keyed scoped service - DxAIChat will resolve per-request
+builder.Services.AddKeyedScoped<Microsoft.Extensions.AI.IChatClient>(
+    "Anthropic",
+    (sp, key) => sp.GetRequiredService<AnthropicChatClientAdapter>());
 
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
