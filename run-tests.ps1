@@ -2,8 +2,8 @@
 
 Write-Host "Starting duetGPT application..." -ForegroundColor Green
 
-# Start the application in background
-$appProcess = Start-Process -FilePath "dotnet" -ArgumentList "run --project duetGPT/duetGPT.csproj" -PassThru -NoNewWindow
+# Start the application in background with correct URL
+$appProcess = Start-Process -FilePath "dotnet" -ArgumentList "run --project duetGPT/duetGPT.csproj --urls https://localhost:44391" -PassThru -NoNewWindow
 
 # Wait for application to start (adjust time if needed)
 Write-Host "Waiting for application to start (30 seconds)..." -ForegroundColor Yellow

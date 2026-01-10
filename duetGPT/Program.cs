@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,8 +63,29 @@ builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider<ApplicationUser>>();
 
+// Add JWT Authentication for API endpoints (don't set as default - let Identity cookies be default)
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = jwtSettings["SecretKey"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
+builder.Services.AddAuthentication()  // Let Identity use cookie auth as default
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "duetGPT",
+        ValidAudience = jwtSettings["Audience"] ?? "duetGPT-users",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+    };
+});
+
 // Add authorization services
 builder.Services.AddAuthorization();
+
+// Add Controllers for API endpoints
+builder.Services.AddControllers();
 
 // Add AnthropicService
 builder.Services.AddSingleton<AnthropicService>();
@@ -72,6 +96,9 @@ builder.Services.AddSingleton<OpenAIService>();
 
 // Add KnowledgeService
 builder.Services.AddScoped<IKnowledgeService, KnowledgeService>();
+
+// Add DocumentProcessingService
+builder.Services.AddScoped<DocumentProcessingService>();
 
 // Add new chat services
 builder.Services.AddScoped<IChatMessageService, ChatMessageService>();
@@ -91,6 +118,18 @@ builder.Services.AddScoped<Microsoft.Extensions.AI.IChatClient>(sp =>
 // Add FileUploadService
 builder.Services.AddScoped<FileUploadService>();
 
+// Add CORS for Next.js frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowNextJs", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -102,6 +141,10 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Enable CORS for Next.js frontend
+app.UseCors("AllowNextJs");
+
 app.UseAntiforgery();
 
 app.UseAuthentication();
@@ -112,6 +155,9 @@ app.MapRazorComponents<App>()
 
 // Add Identity endpoints
 app.MapAdditionalIdentityEndpoints();
+
+// Map API Controllers
+app.MapControllers();
 
 // Add file upload endpoint
 app.MapPost("/api/UploadValidation/Upload", async (HttpRequest request, FileUploadService fileUploadService) =>
@@ -126,31 +172,8 @@ app.MapPost("/api/UploadValidation/Upload", async (HttpRequest request, FileUplo
     return Results.BadRequest("No file was uploaded or user ID was not provided");
 });
 
-// Apply database migrations
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        context.Database.Migrate();
-        Log.Information("Database migrations applied successfully.");
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "An error occurred while applying database migrations.");
-    }
-
-    // Verify IChatClient registration for DxAIChat integration
-    try
-    {
-        var chatClient = services.GetRequiredService<Microsoft.Extensions.AI.IChatClient>();
-        Log.Warning("=== IChatClient VERIFIED === Type: {Type}", chatClient.GetType().FullName);
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "CRITICAL: IChatClient not registered properly!");
-    }
-}
+// Skip database migrations for now - run manually with: dotnet ef database update
+Log.Information("=== Skipping automatic database migrations ===");
+Log.Information("=== Application starting... ===");
 
 app.Run();
