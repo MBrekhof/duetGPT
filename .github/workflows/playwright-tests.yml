@@ -74,6 +74,7 @@ jobs:
     - name: Run database migrations
       run: |
         cd duetGPT
+        dotnet tool restore
         dotnet ef database update --no-build --configuration Release
       env:
         ASPNETCORE_ENVIRONMENT: Testing
