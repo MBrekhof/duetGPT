@@ -138,7 +138,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+Console.WriteLine("Building application...");
 var app = builder.Build();
+Console.WriteLine("Application built successfully");
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
@@ -147,7 +149,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in non-Testing environments
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHttpsRedirection();
+}
+Console.WriteLine("Configuring middleware...");
 app.UseStaticFiles();
 
 // Enable CORS for Next.js frontend
@@ -158,6 +165,7 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
+Console.WriteLine("Mapping components and endpoints...");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
