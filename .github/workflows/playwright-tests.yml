@@ -71,13 +71,8 @@ jobs:
         }
         EOF
 
-    - name: Run database migrations
-      run: |
-        cd duetGPT
-        dotnet tool restore
-        dotnet ef database update --no-build --configuration Release
-      env:
-        ASPNETCORE_ENVIRONMENT: Testing
+    # Skip database migrations - tests can run without database access
+    # The application services are configured to allow missing API keys in Testing environment
 
     - name: Start application in background
       run: |
