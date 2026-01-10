@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -63,11 +64,11 @@ builder.Services.AddScoped<IdentityUserAccessor>();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider<ApplicationUser>>();
 
-// Add JWT Authentication for API endpoints (don't set as default - let Identity cookies be default)
+// Add JWT Authentication for API endpoints
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"] ?? "YourSuperSecretKeyThatIsAtLeast32CharactersLong!";
-builder.Services.AddAuthentication()  // Let Identity use cookie auth as default
-.AddJwtBearer(options =>
+builder.Services.AddAuthentication()
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -81,8 +82,15 @@ builder.Services.AddAuthentication()  // Let Identity use cookie auth as default
     };
 });
 
-// Add authorization services
-builder.Services.AddAuthorization();
+// Add authorization services with policies for different schemes
+builder.Services.AddAuthorization(options =>
+{
+    // Default policy accepts both cookies (for Blazor) and JWT (for API)
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes(IdentityConstants.ApplicationScheme, JwtBearerDefaults.AuthenticationScheme)
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 // Add Controllers for API endpoints
 builder.Services.AddControllers();
