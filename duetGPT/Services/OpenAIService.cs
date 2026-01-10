@@ -17,8 +17,18 @@ namespace duetGPT.Services
             try
             {
                 var apiKey = configuration["OpenAI:ApiKey"];
+                var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
                 if (string.IsNullOrEmpty(apiKey))
                 {
+                    // In Testing/Development, allow initialization without API key for build/test purposes
+                    if (environment == "Testing" || environment == "Development")
+                    {
+                        _logger.LogWarning("OpenAI API key is not configured - service will be unavailable");
+                        _openAIClient = null!; // Will throw if actually used, but allows app to start
+                        return;
+                    }
+
                     _logger.LogError("OpenAI API key is not configured");
                     throw new ArgumentException("OpenAI API key is not configured.");
                 }

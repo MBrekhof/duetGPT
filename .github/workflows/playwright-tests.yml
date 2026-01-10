@@ -74,13 +74,20 @@ jobs:
     - name: Start application in background
       run: |
         cd duetGPT
+        echo "Starting application..."
         dotnet run --no-build --configuration Release --urls "http://localhost:5000" > ../app.log 2>&1 &
         APP_PID=$!
         echo "APP_PID=$APP_PID" >> $GITHUB_ENV
         echo "Started application with PID: $APP_PID"
-        sleep 2
-        echo "Application output:"
-        head -20 ../app.log || echo "No logs yet"
+        sleep 5
+        echo "=== Initial Application Output ==="
+        cat ../app.log || echo "No logs yet"
+        echo "=== End Initial Output ==="
+        if ! ps -p $APP_PID > /dev/null 2>&1; then
+          echo "ERROR: Application process already terminated!"
+          cat ../app.log
+          exit 1
+        fi
       env:
         ASPNETCORE_ENVIRONMENT: Testing
         ASPNETCORE_URLS: http://localhost:5000
