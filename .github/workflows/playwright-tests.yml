@@ -78,11 +78,11 @@ jobs:
       run: |
         cd duetGPT
         echo "Starting application..."
-        dotnet run --no-build --configuration Release --urls "http://localhost:5000" > ../app.log 2>&1 &
+        dotnet run --no-build --configuration Release --urls "http://0.0.0.0:5000" > ../app.log 2>&1 &
         APP_PID=$!
         echo "APP_PID=$APP_PID" >> $GITHUB_ENV
         echo "Started application with PID: $APP_PID"
-        sleep 5
+        sleep 10
         echo "=== Initial Application Output ==="
         cat ../app.log || echo "No logs yet"
         echo "=== End Initial Output ==="
@@ -93,7 +93,7 @@ jobs:
         fi
       env:
         ASPNETCORE_ENVIRONMENT: Testing
-        ASPNETCORE_URLS: http://localhost:5000
+        ASPNETCORE_URLS: http://0.0.0.0:5000
 
     - name: Wait for application to start
       run: |
