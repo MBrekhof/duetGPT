@@ -12,8 +12,11 @@ public class UnauthenticatedTestBase : PageTest
 {
     /// <summary>
     /// Base URL for the application
+    /// Uses HTTP in CI/Testing environment, HTTPS in Development
     /// </summary>
-    protected string BaseUrl => "https://localhost:44391";
+    protected string BaseUrl => Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing"
+        ? "http://localhost:5000"
+        : "https://localhost:44391";
 
     /// <summary>
     /// Override to provide browser context options WITHOUT authentication state

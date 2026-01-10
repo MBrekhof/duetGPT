@@ -33,7 +33,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x'
+        dotnet-version: '9.0.x'
 
     - name: Setup Node.js (for Playwright)
       uses: actions/setup-node@v4
@@ -49,7 +49,7 @@ jobs:
     - name: Install Playwright browsers
       run: |
         cd duetGPT.Tests
-        pwsh bin/Release/net10.0/playwright.ps1 install --with-deps
+        pwsh bin/Release/net9.0/playwright.ps1 install --with-deps
 
     - name: Create test appsettings
       run: |
@@ -74,21 +74,22 @@ jobs:
     - name: Start application in background
       run: |
         cd duetGPT
-        dotnet run --no-build --configuration Release --urls "https://localhost:44391" &
+        dotnet run --no-build --configuration Release --urls "http://localhost:5000" > ../app.log 2>&1 &
         APP_PID=$!
         echo "APP_PID=$APP_PID" >> $GITHUB_ENV
         echo "Started application with PID: $APP_PID"
+        sleep 2
+        echo "Application output:"
+        head -20 ../app.log || echo "No logs yet"
       env:
         ASPNETCORE_ENVIRONMENT: Testing
-        ASPNETCORE_URLS: https://localhost:44391
-        ASPNETCORE_Kestrel__Certificates__Default__Path: ""
-        ASPNETCORE_Kestrel__Certificates__Default__Password: ""
+        ASPNETCORE_URLS: http://localhost:5000
 
     - name: Wait for application to start
       run: |
         echo "Waiting for application to be ready..."
         for i in {1..60}; do
-          if curl -k -f https://localhost:44391 > /dev/null 2>&1; then
+          if curl -f http://localhost:5000 > /dev/null 2>&1; then
             echo "Application is ready!"
             exit 0
           fi
@@ -96,6 +97,10 @@ jobs:
           sleep 2
         done
         echo "Application failed to start within timeout"
+        echo "=== Application Logs ==="
+        cat app.log || echo "Could not read app.log"
+        echo "=== Process Status ==="
+        ps aux | grep dotnet || echo "No dotnet processes found"
         exit 1
 
     - name: Run Playwright tests
@@ -120,7 +125,7 @@ jobs:
         name: test-results
         path: |
           duetGPT.Tests/TestResults/*.trx
-          duetGPT.Tests/bin/Release/net10.0/playwright-results/
+          duetGPT.Tests/bin/Release/net9.0/playwright-results/
         retention-days: 30
 
     - name: Upload screenshots on failure
@@ -128,7 +133,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: playwright-screenshots
-        path: duetGPT.Tests/bin/Release/net10.0/playwright-results/**/*.png
+        path: duetGPT.Tests/bin/Release/net9.0/playwright-results/**/*.png
         retention-days: 30
 
     - name: Test Report Summary
