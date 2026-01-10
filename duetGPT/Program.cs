@@ -168,6 +168,8 @@ app.UseAuthorization();
 Console.WriteLine("Mapping components and endpoints...");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+// Note: .RequireAuthorization() doesn't work as expected for InteractiveServer components
+// Authorization is enforced client-side via [Authorize] attributes on individual pages
 
 // Add Identity endpoints
 Console.WriteLine("Mapping Identity endpoints...");
