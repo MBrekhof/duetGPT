@@ -170,12 +170,15 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // Add Identity endpoints
+Console.WriteLine("Mapping Identity endpoints...");
 app.MapAdditionalIdentityEndpoints();
 
 // Map API Controllers
+Console.WriteLine("Mapping API controllers...");
 app.MapControllers();
 
 // Add file upload endpoint
+Console.WriteLine("Mapping file upload endpoint...");
 app.MapPost("/api/UploadValidation/Upload", async (HttpRequest request, FileUploadService fileUploadService) =>
 {
     var file = request.Form.Files.FirstOrDefault();
@@ -189,7 +192,9 @@ app.MapPost("/api/UploadValidation/Upload", async (HttpRequest request, FileUplo
 });
 
 // Skip database migrations for now - run manually with: dotnet ef database update
+Console.WriteLine("Endpoint mapping complete");
 Log.Information("=== Skipping automatic database migrations ===");
 Log.Information("=== Application starting... ===");
+Console.WriteLine("Starting application server...");
 
 app.Run();
