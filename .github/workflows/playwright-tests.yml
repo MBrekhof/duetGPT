@@ -71,6 +71,13 @@ jobs:
         }
         EOF
 
+    - name: Run database migrations
+      run: |
+        cd duetGPT
+        dotnet ef database update --no-build --configuration Release
+      env:
+        ASPNETCORE_ENVIRONMENT: Testing
+
     - name: Start application in background
       run: |
         cd duetGPT
